@@ -47,6 +47,31 @@ pip install realtime-video-analytics-32streams[full]
 realtime-analytics --config /etc/analytics/pipeline.yaml
 ```
 
+## Docker
+
+```bash
+# Build the container image
+docker compose build
+
+# Run the pipeline (uses ./config/pipeline.yaml by default)
+docker compose up pipeline
+
+# Optional: run the dashboard alongside
+docker compose up dashboard
+```
+
+Mounted volumes:
+
+- `./config` ➜ `/data/config` – place your pipeline YAML here (e.g. `config/pipeline.yaml`).
+- `./models` ➜ `/app/models` – store Ultralytics `.pt` 或 TensorRT `.engine` 模型。
+
+Environment overrides:
+
+- `PIPELINE_CONFIG` – pipeline service config path，默认 `/data/config/pipeline.yaml`。
+- `DASHBOARD_CONFIG` / `DASHBOARD_PORT` – 控制看板引用的配置与端口。
+
+> 若需在容器中使用 TensorRT 引擎，请确保宿主机具备 GPU 与匹配的 NVIDIA 驱动，并基于官方 TensorRT/CUDA 基础镜像构建，运行时添加 `--gpus all`。
+
 ## Dashboard
 
 A lightweight FastAPI dashboard is available to visualize detection metadata (per-stream track counts). The server listens to the same Kafka topic that the pipeline publishes.
@@ -90,12 +115,12 @@ Everything is expressed in YAML (see `config/sample-pipeline.yaml`). Key section
 - `prometheus`: enable the HTTP `/metrics` endpoint and configure listen address/port.
 - `max_concurrent_streams`: hard guard against accidental over-subscription.
 
-`src/realtime_analytics/config.py` declares the dataclasses, validation logic, and defaults. For backend-specific setup guides (Ultralytics, ONNX Runtime, TensorRT) see `docs/model_integration_cn.md`.
+`src/realtime_analytics/config.py` declares the dataclasses, validation logic, and defaults. For backend-specific setup guides (Ultralytics YOLO / TensorRT) see `docs/model_integration_cn.md`.
 
 ## Module layout
 
 - `video_stream.py` – async wrapper around OpenCV capture, handles warm-up, retries, and frame pacing.
-- `detector.py` – Pluggable detector backends (Ultralytics YOLO, ONNX Runtime, TensorRT helpers).
+- `detector.py` – Pluggable detector backends (Ultralytics YOLO / TensorRT helpers).
 - `tracker.py` – lightweight IOU-based tracker maintaining per-stream state.
 - `pipeline.py` – orchestrates stream workers, detector/tracker execution, sink dispatch, and graceful shutdown.
 - `sinks/kafka_sink.py` – optional Kafka producer (`aiokafka`) with JSON payloads.

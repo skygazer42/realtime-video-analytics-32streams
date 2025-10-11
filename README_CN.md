@@ -4,7 +4,7 @@
 
 > ⚠️ 当前仓库提供的是参考级的纯 Python 实现，方便本地开发与验证。若要接入 TensorRT / DeepStream，可在后续替换 `detector.py`、`tracker.py` 中的实现。
 
-如需了解不同推理后端（Ultralytics、ONNX Runtime、TensorRT）的接入方式，请参阅 `docs/model_integration_cn.md`。
+如需了解不同推理后端（Ultralytics、TensorRT）的接入方式，请参阅 `docs/model_integration_cn.md`。
 
 ## 环境与依赖
 
@@ -51,6 +51,31 @@ python scripts/run_pipeline.py --config my-pipeline.yaml --log-level INFO
 pip install realtime-video-analytics-32streams[full]
 realtime-analytics --config /etc/analytics/pipeline.yaml
 ```
+
+## Docker 部署
+
+```bash
+# 构建容器镜像
+docker compose build
+
+# 运行检测流水线（默认读取 ./config/pipeline.yaml）
+docker compose up pipeline
+
+# 可选：同时启动可视化看板
+docker compose up dashboard
+```
+
+挂载目录：
+
+- `./config` ➜ `/data/config`（放置你的 YAML 配置，例如 `config/pipeline.yaml`）
+- `./models` ➜ `/app/models`（存放 Ultralytics `.pt` 或 TensorRT `.engine` 模型）
+
+环境变量：
+
+- `PIPELINE_CONFIG` 控制流水线在容器内读取的配置路径，默认 `/data/config/pipeline.yaml`
+- `DASHBOARD_CONFIG`、`DASHBOARD_PORT` 控制看板引用的配置与监听端口
+
+> 如果需要在容器中启用 TensorRT，引擎应基于 NVIDIA 官方 TensorRT/CUDA 镜像构建，并在运行时加入 `--gpus all`，确保宿主机安装了对应的驱动。
 
 ## 可视化看板
 
@@ -139,7 +164,7 @@ streams:
 ## 运行流程概览
 
 1. **VideoStream**（`video_stream.py`）：异步调用 OpenCV 打开 RTSP/RTMP 流，按配置进行暖机、限帧与断线重连。
-2. **Detector**（`detector.py`）：可插拔的推理后端（Ultralytics、ONNX Runtime、TensorRT），统一输出检测结果。
+2. **Detector**（`detector.py`）：可插拔的推理后端（Ultralytics、TensorRT），统一输出检测结果。
 3. **IOUTracker**（`tracker.py`）：轻量级 IOU 匹配器，维护每路流的跟踪状态。
 4. **KafkaSink**（`sinks/kafka_sink.py`）：可选，将每帧的跟踪结果推送到 Kafka topic。
 5. **MetricsPublisher**（`telemetry/metrics.py`）：在 `http://host:port/metrics` 暴露 Prometheus 指标：帧数量、检测数量、活跃轨迹数等。

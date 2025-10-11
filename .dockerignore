@@ -1,0 +1,12 @@
+.git
+__pycache__
+*.py[cod]
+*.log
+dist
+build
+.venv
+*.egg-info
+pytest_cache
+.mypy_cache
+.DS_Store
+models/**
