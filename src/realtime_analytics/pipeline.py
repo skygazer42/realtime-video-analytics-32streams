@@ -11,7 +11,7 @@ import sys
 from dataclasses import dataclass
 from typing import List
 
-from .config import PipelineConfig, StreamConfig
+from .config import DetectorConfig, PipelineConfig, StreamConfig
 from .detector import BaseDetector, create_detector, filter_detections
 from .sinks import KafkaSink
 from .telemetry import MetricsPublisher
@@ -94,11 +94,18 @@ class AnalyticsPipeline:
         LOGGER.info("Booting analytics pipeline")
         await self.metrics.start()
         await self.kafka.connect()
+        detector_configs: dict[str, DetectorConfig] = {"__default__": self.config.detector}
+        detector_configs.update(self.config.detectors)
+
         for stream in self.config.streams:
             if not stream.enabled:
                 LOGGER.info("Skipping disabled stream '%s'", stream.name)
                 continue
-            detector = create_detector(self.config.detector)
+            key = stream.detector_id or "__default__"
+            detector_config = detector_configs.get(key)
+            if detector_config is None:
+                detector_config = self.config.detector
+            detector = create_detector(detector_config)
             context = StreamWorkerContext(
                 stream=stream,
                 detector=detector,

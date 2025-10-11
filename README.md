@@ -108,7 +108,8 @@ When Kafka is disabled, the dashboard still runs but no events are shown until d
 Everything is expressed in YAML (see `config/sample-pipeline.yaml`). Key sections:
 
 - `streams`: declarative list of up to 32 RTSP/RTMP sources. Each item accepts `name`, `url`, optional `target_fps`, warm-up, and reconnect controls.
-- `detector`: backend (`ultralytics` \| `tensorrt`), model/engine path, device, confidence & IoU thresholds, class filtering.
+- `detector`: default backend (`ultralytics` \| `tensorrt`), model/engine path, device, confidence & IoU thresholds, class filtering.
+- `detectors`: optional mapping (`id -> detector config`) when different streams need distinct models; reference via `streams[].detector_id`.
 - `tracker`: parameters for the IOU tracker (acts as a ByteTrack-compatible shim).
 - `kafka`: optional sink to publish events through `aiokafka` (disabled by default).
 - `kafka.include_frames`: toggle inline JPEG previews (set to `true` to enable dashboard thumbnails).

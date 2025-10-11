@@ -1,6 +1,6 @@
 # 检测模型接入指南
 
-本文介绍如何在实时多流检测平台中接入不同推理后端，包括 Ultralytics YOLO（默认）、ONNX Runtime 以及 TensorRT 引擎。目标是做到“同一流水线、可插拔模型”。
+本文介绍如何在实时多流检测平台中接入 Ultralytics YOLO（默认）与 TensorRT 引擎后端，满足从快速验证到高性能部署的不同需求。
 
 ---
 
@@ -76,6 +76,16 @@ detector:
      conf_threshold: 0.45
      iou_threshold: 0.5
      half: true                    # 若 engine 采用 FP16
+
+    detectors:
+      parking:
+        backend: tensorrt
+        model_path: models/tensorrt/parking.engine
+        input_size: [640, 640]
+
+    streams:
+      - name: camera-parking
+        detector_id: parking
    ```
 
 4. 引擎要求：
@@ -111,3 +121,5 @@ detector:
 ---
 
 通过以上配置，可以在同一个实时检测平台中灵活切换模型推理后端，满足调试、生产不同阶段的性能与部署需求。
+
+> 如果不同流需要不同模型，可在顶层 `detectors` 中定义多个配置，并在 `streams[].detector_id` 中引用，示例见下文 TensorRT 部分。

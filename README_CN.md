@@ -140,6 +140,12 @@ detector:
 - `warmup_seconds`：打开流后等待的秒数，用于避免起播瞬间花帧。
 - `reconnect_backoff`：读取失败时的重试间隔。
 - `max_retries`：连续失败的最大重试次数，`null` 表示无限重试。
+- `detector_id`：可选，引用顶层 `detectors` 映射中的某个模型配置，为不同流指定不同权重/引擎。
+
+在 YAML 顶层还可以声明：
+
+- `detector`：默认的检测模型配置。
+- `detectors`：可选的字典（`标识符 -> 检测配置`），当不同摄像头需要加载不同模型时使用。
 
 要扩展到 32 路，只需在 `streams` 列表中追加条目。注意：
 

@@ -13,6 +13,7 @@ streams:
     warmup_seconds: 1.0
     reconnect_backoff: 5.0
     max_retries: null
+    detector_id: entrance
   - name: camera-2
     url: rtsp://example.com/stream2
     enabled: true
@@ -21,6 +22,7 @@ streams:
     warmup_seconds: 1.0
     reconnect_backoff: 5.0
     max_retries: null
+    detector_id: parking
 
 detector:
   model_path: yolov8n.pt
@@ -31,6 +33,19 @@ detector:
   classes: null
   half: false
   warmup: true
+
+detectors:
+  entrance:
+    backend: ultralytics
+    model_path: models/yolo/entrance.pt
+    device: cuda:0
+    conf_threshold: 0.45
+  parking:
+    backend: tensorrt
+    model_path: models/tensorrt/parking_fp16.engine
+    input_size: [640, 640]
+    conf_threshold: 0.5
+    iou_threshold: 0.5
 
 tracker:
   type: byte_track

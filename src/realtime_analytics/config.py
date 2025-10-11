@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 import yaml
 
@@ -27,6 +27,7 @@ class StreamConfig:
     warmup_seconds: float = 2.0
     reconnect_backoff: float = 5.0
     max_retries: Optional[int] = None
+    detector_id: Optional[str] = None
 
     def validate(self) -> None:
         if not self.name:
@@ -139,6 +140,7 @@ class PipelineConfig:
 
     streams: List[StreamConfig] = field(default_factory=list)
     detector: DetectorConfig = field(default_factory=DetectorConfig)
+    detectors: Dict[str, DetectorConfig] = field(default_factory=dict)
     tracker: TrackerConfig = field(default_factory=TrackerConfig)
     kafka: KafkaSinkConfig = field(default_factory=KafkaSinkConfig)
     prometheus: PrometheusConfig = field(default_factory=PrometheusConfig)
@@ -156,9 +158,18 @@ class PipelineConfig:
             )
         if self.stats_interval_seconds <= 0:
             raise ConfigError("stats_interval_seconds must be > 0")
+        available_detectors = set(self.detectors.keys())
+        if not available_detectors:
+            available_detectors.add("__default__")
+        for stream in self.streams:
+            if stream.detector_id and stream.detector_id not in self.detectors:
+                raise ConfigError(
+                    f"Stream '{stream.name}' references unknown detector_id='{stream.detector_id}'"
+                )
         _validate_all(
             self.streams,
             self.detector,
+            list(self.detectors.values()),
             self.tracker,
             self.kafka,
             self.prometheus,
@@ -202,12 +213,20 @@ def load_config(path: Path | str) -> PipelineConfig:
     ]
 
     detector = _object_from_dict(DetectorConfig, raw.get("detector", {}))
+    detectors_raw = raw.get("detectors", {}) or {}
+    if not isinstance(detectors_raw, dict):
+        raise ConfigError("'detectors' section must be a mapping of id -> config")
+    detectors = {
+        key: _object_from_dict(DetectorConfig, value or {})
+        for key, value in detectors_raw.items()
+    }
     tracker = _object_from_dict(TrackerConfig, raw.get("tracker", {}))
     kafka = _object_from_dict(KafkaSinkConfig, raw.get("kafka", {}))
     prometheus = _object_from_dict(PrometheusConfig, raw.get("prometheus", {}))
     pipeline = PipelineConfig(
         streams=streams,
         detector=detector,
+        detectors=detectors,
         tracker=tracker,
         kafka=kafka,
         prometheus=prometheus,
