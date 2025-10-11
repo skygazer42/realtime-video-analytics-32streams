@@ -1,10 +1,11 @@
 ---
 # Example pipeline configuration for realtime-video-analytics-32streams
 
-max_concurrent_streams: 32
-stats_interval_seconds: 15
+max_concurrent_streams: 32   # 最大并行摄像头数量：硬防止配置超过实际算力
+stats_interval_seconds: 15   # 控制台统计打印间隔（秒）
 
 streams:
+  # 每个流一条配置，可通过 detector_id 指向不同检测模型
   - name: camera-1
     url: rtsp://example.com/stream1
     enabled: true
@@ -24,16 +25,18 @@ streams:
     max_retries: null
     detector_id: parking
 
+# 默认检测器（streams 未设置 detector_id 时使用）
 detector:
-  model_path: yolov8n.pt
-  device: auto
-  backend: ultralytics
-  conf_threshold: 0.5
-  iou_threshold: 0.45
-  classes: null
-  half: false
-  warmup: true
+  model_path: yolov8n.pt       # 可改为 models/yolo/xxx.pt
+  device: auto                 # auto / cpu / cuda:0 ...
+  backend: ultralytics         # ultralytics / tensorrt
+  conf_threshold: 0.5          # 置信度阈值
+  iou_threshold: 0.45          # NMS IoU 阈值
+  classes: null                # 过滤类别（null 表示全部）
+  half: false                  # 是否使用半精度
+  warmup: true                 # 启动时跑一次暖机
 
+# 自定义检测器映射：id -> DetectorConfig
 detectors:
   entrance:
     backend: ultralytics
@@ -47,12 +50,14 @@ detectors:
     conf_threshold: 0.5
     iou_threshold: 0.5
 
+# 轻量级 IOU 跟踪器参数
 tracker:
   type: byte_track
   max_age: 30
   max_iou_distance: 0.5
   min_hits: 1
 
+# Kafka 事件输出，可被仪表盘/其它服务消费
 kafka:
   enabled: false
   bootstrap_servers: localhost:9092
@@ -62,6 +67,7 @@ kafka:
   include_frames: false
   frame_quality: 75
 
+# Prometheus 指标配置
 prometheus:
   enabled: true
   host: 0.0.0.0
