@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import yaml
 
@@ -28,6 +28,13 @@ class StreamConfig:
     reconnect_backoff: float = 5.0
     max_retries: Optional[int] = None
     detector_id: Optional[str] = None
+    roi_polygons: Optional[List[List[Tuple[int, int]]]] = None  # list of polygons
+    motion_filter: bool = False
+    motion_threshold: float = 0.02
+    downsample_ratio: float = 1.0
+    adaptive_fps: bool = False
+    min_target_fps: float = 5.0
+    idle_frame_tolerance: int = 60
 
     def validate(self) -> None:
         if not self.name:
@@ -44,6 +51,14 @@ class StreamConfig:
             raise ConfigError(f"Stream '{self.name}' reconnect_backoff must be >= 0")
         if self.max_retries is not None and self.max_retries < 0:
             raise ConfigError(f"Stream '{self.name}' max_retries must be >= 0")
+        if self.motion_threshold < 0:
+            raise ConfigError(f"Stream '{self.name}' motion_threshold must be >= 0")
+        if not (0.1 <= self.downsample_ratio <= 1.0):
+            raise ConfigError(f"Stream '{self.name}' downsample_ratio must be between 0.1 and 1.0")
+        if self.adaptive_fps and (self.min_target_fps <= 0 or self.min_target_fps > (self.target_fps or 30)):
+            raise ConfigError(
+                f"Stream '{self.name}' min_target_fps must be > 0 and <= target_fps when adaptive_fps is enabled"
+            )
 
 
 @dataclass(slots=True)

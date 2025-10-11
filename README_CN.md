@@ -142,6 +142,13 @@ detector:
 - `max_retries`：连续失败的最大重试次数，`null` 表示无限重试。
 - `detector_id`：可选，引用顶层 `detectors` 映射中的某个模型配置，为不同流指定不同权重/引擎。
 
+可选的高级字段：
+
+- `roi_polygons`：仅在指定区域内检测（支持多个多边形）。
+- `motion_filter` / `motion_threshold`：启用简单移动检测，静止画面自动跳过推理。
+- `downsample_ratio`：在推理前缩放画面，降低分辨率以节省算力（0.1~1.0）。
+- `adaptive_fps` + `min_target_fps` + `idle_frame_tolerance`：在长时间无目标时降低检测频率，有目标时恢复。
+
 在 YAML 顶层还可以声明：
 
 - `detector`：默认的检测模型配置。
