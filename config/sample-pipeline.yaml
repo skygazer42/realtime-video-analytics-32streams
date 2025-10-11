@@ -25,6 +25,7 @@ streams:
 detector:
   model_path: yolov8n.pt
   device: auto
+  backend: ultralytics
   conf_threshold: 0.5
   iou_threshold: 0.45
   classes: null
@@ -43,6 +44,8 @@ kafka:
   topic: analytics.events
   linger_ms: 10
   max_batch_size: 16384
+  include_frames: false
+  frame_quality: 75
 
 prometheus:
   enabled: true

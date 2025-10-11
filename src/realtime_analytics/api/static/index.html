@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Realtime Analytics Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Realtime Analytics Dashboard</h1>
+      <div id="status" class="status status--disconnected">Disconnected</div>
+    </header>
+
+    <main>
+      <section class="streams">
+        <table>
+          <thead>
+            <tr>
+              <th>Stream</th>
+              <th>Frame</th>
+              <th>Tracks</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody id="streams-body">
+            <tr class="empty">
+              <td colspan="4">Waiting for detections...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="details">
+        <h2>Tracks</h2>
+        <!-- 带检测框的最新帧预览区域 -->
+        <div class="preview" id="preview-container">
+          <div class="preview__placeholder" id="preview-placeholder">
+            Select a stream to view the latest annotated frame.
+          </div>
+          <img id="stream-preview" alt="Stream preview" hidden />
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Track ID</th>
+              <th>Class</th>
+              <th>Confidence</th>
+              <th>BBox (x1, y1, x2, y2)</th>
+            </tr>
+          </thead>
+          <tbody id="tracks-body">
+            <tr class="empty">
+              <td colspan="4">Select a stream to view track details</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Streams update in realtime via WebSocket. Configure the pipeline to publish Kafka events to
+        view detections here.
+      </p>
+    </footer>
+
+    <script src="/static/main.js"></script>
+  </body>
+</html>

@@ -51,19 +51,29 @@ class DetectorConfig:
 
     model_path: str = "yolov8n.pt"
     device: str = "auto"
+    backend: str = "ultralytics"  # ultralytics | tensorrt
     conf_threshold: float = 0.5
     iou_threshold: float = 0.45
     classes: Optional[List[int]] = None
     half: bool = False
     warmup: bool = True
+    input_size: Optional[List[int]] = None  # H,W
+    tensorrt_max_workspace_size: int = 1 << 30  # 1 GiB
+    tensorrt_use_fp16: bool = False
 
     def validate(self) -> None:
         if not self.model_path:
             raise ConfigError("Detector model_path must not be empty")
+        if self.backend not in {"ultralytics", "tensorrt"}:
+            raise ConfigError("Detector backend must be one of ultralytics|tensorrt")
         if not (0.0 < self.conf_threshold <= 1.0):
             raise ConfigError("conf_threshold must be in (0, 1]")
         if not (0.0 < self.iou_threshold <= 1.0):
             raise ConfigError("iou_threshold must be in (0, 1]")
+        if self.input_size and len(self.input_size) != 2:
+            raise ConfigError("input_size must be [height, width]")
+        if self.tensorrt_max_workspace_size <= 0:
+            raise ConfigError("tensorrt_max_workspace_size must be > 0")
 
 
 @dataclass(slots=True)
@@ -93,6 +103,8 @@ class KafkaSinkConfig:
     topic: str = "analytics"
     linger_ms: int = 10
     max_batch_size: int = 16384
+    include_frames: bool = False
+    frame_quality: int = 75
 
     def validate(self) -> None:
         if self.enabled and not self.topic:
@@ -101,6 +113,8 @@ class KafkaSinkConfig:
             raise ConfigError("Kafka sink linger_ms must be >= 0")
         if self.max_batch_size <= 0:
             raise ConfigError("Kafka sink max_batch_size must be > 0")
+        if not (1 <= self.frame_quality <= 100):
+            raise ConfigError("Kafka sink frame_quality must be between 1 and 100")
 
 
 @dataclass(slots=True)

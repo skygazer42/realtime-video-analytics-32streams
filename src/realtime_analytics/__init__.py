@@ -6,4 +6,5 @@ Modules expose building blocks for configuring, running, and instrumenting
 """
 
 from .config import PipelineConfig, load_config  # noqa: F401
+from .detector import Detection, create_detector  # noqa: F401
 from .pipeline import AnalyticsPipeline  # noqa: F401

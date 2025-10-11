@@ -17,14 +17,25 @@ dependencies = [
 
 [project.optional-dependencies]
 detector = ["ultralytics>=8.0.0"]
+tensorrt = []
 kafka = ["aiokafka>=0.10.0"]
+dashboard = [
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.28.0",
+  "aiokafka>=0.10.0",
+  "aiofiles>=23.2.0",
+]
 full = [
   "ultralytics>=8.0.0",
   "aiokafka>=0.10.0",
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.28.0",
+  "aiofiles>=23.2.0",
 ]
 
 [project.scripts]
 realtime-analytics = "scripts.run_pipeline:main"
+realtime-analytics-dashboard = "scripts.run_dashboard:main"
 
 [tool.uv]
 package = true

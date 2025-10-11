@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import List
 
 from .config import PipelineConfig, StreamConfig
-from .detector import Detector, filter_detections
+from .detector import BaseDetector, create_detector, filter_detections
 from .sinks import KafkaSink
 from .telemetry import MetricsPublisher
 from .tracker import IOUTracker
@@ -24,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 @dataclass(slots=True)
 class StreamWorkerContext:
     stream: StreamConfig
-    detector: Detector
+    detector: BaseDetector
     tracker: IOUTracker
     kafka: KafkaSink
     metrics: MetricsPublisher
@@ -75,6 +75,7 @@ class StreamWorker:
             stream_name=packet.stream.name,
             frame_id=packet.frame_id,
             tracks=tracks,
+            frame=packet.frame,  # 将原始帧传递给 Kafka，用于可选的可视化
         )
 
 
@@ -97,7 +98,7 @@ class AnalyticsPipeline:
             if not stream.enabled:
                 LOGGER.info("Skipping disabled stream '%s'", stream.name)
                 continue
-            detector = Detector(self.config.detector)
+            detector = create_detector(self.config.detector)
             context = StreamWorkerContext(
                 stream=stream,
                 detector=detector,

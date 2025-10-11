@@ -47,23 +47,55 @@ pip install realtime-video-analytics-32streams[full]
 realtime-analytics --config /etc/analytics/pipeline.yaml
 ```
 
+## Dashboard
+
+A lightweight FastAPI dashboard is available to visualize detection metadata (per-stream track counts). The server listens to the same Kafka topic that the pipeline publishes.
+
+```bash
+# Install optional dashboard dependencies (uv)
+uv sync --extra dashboard
+
+# Start the dashboard; reuse pipeline Kafka settings via config
+uv run realtime-analytics-dashboard --config my-pipeline.yaml --port 8080
+
+# Open your browser
+open http://localhost:8080
+```
+
+The dashboard exposes:
+
+- `/` – realtime table of streams and active tracks (WebSocket updates)
+- `/api/snapshot` – JSON snapshot of the latest detections
+- `/ws` – WebSocket endpoint (for custom clients)
+
+To visualize annotated frames, enable Kafka frame payloads in your pipeline config:
+
+```yaml
+kafka:
+  enabled: true
+  include_frames: true
+```
+
+When Kafka is disabled, the dashboard still runs but no events are shown until detections are published.
+
 ## Configuration reference
 
 Everything is expressed in YAML (see `config/sample-pipeline.yaml`). Key sections:
 
 - `streams`: declarative list of up to 32 RTSP/RTMP sources. Each item accepts `name`, `url`, optional `target_fps`, warm-up, and reconnect controls.
-- `detector`: YOLO model path (`yolov8n.pt` by default), device (`auto` / `cuda:0` / `cpu`), confidence & IoU thresholds, class filtering.
+- `detector`: backend (`ultralytics` \| `tensorrt`), model/engine path, device, confidence & IoU thresholds, class filtering.
 - `tracker`: parameters for the IOU tracker (acts as a ByteTrack-compatible shim).
 - `kafka`: optional sink to publish events through `aiokafka` (disabled by default).
+- `kafka.include_frames`: toggle inline JPEG previews (set to `true` to enable dashboard thumbnails).
 - `prometheus`: enable the HTTP `/metrics` endpoint and configure listen address/port.
 - `max_concurrent_streams`: hard guard against accidental over-subscription.
 
-`src/realtime_analytics/config.py` declares the dataclasses, validation logic, and defaults.
+`src/realtime_analytics/config.py` declares the dataclasses, validation logic, and defaults. For backend-specific setup guides (Ultralytics, ONNX Runtime, TensorRT) see `docs/model_integration_cn.md`.
 
 ## Module layout
 
 - `video_stream.py` – async wrapper around OpenCV capture, handles warm-up, retries, and frame pacing.
-- `detector.py` – Ultralytics YOLO adaptor (lazy loading, warm-up, detection filtering).
+- `detector.py` – Pluggable detector backends (Ultralytics YOLO, ONNX Runtime, TensorRT helpers).
 - `tracker.py` – lightweight IOU-based tracker maintaining per-stream state.
 - `pipeline.py` – orchestrates stream workers, detector/tracker execution, sink dispatch, and graceful shutdown.
 - `sinks/kafka_sink.py` – optional Kafka producer (`aiokafka`) with JSON payloads.

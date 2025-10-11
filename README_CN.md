@@ -4,6 +4,8 @@
 
 > ⚠️ 当前仓库提供的是参考级的纯 Python 实现，方便本地开发与验证。若要接入 TensorRT / DeepStream，可在后续替换 `detector.py`、`tracker.py` 中的实现。
 
+如需了解不同推理后端（Ultralytics、ONNX Runtime、TensorRT）的接入方式，请参阅 `docs/model_integration_cn.md`。
+
 ## 环境与依赖
 
 - Python 3.10+
@@ -50,6 +52,37 @@ pip install realtime-video-analytics-32streams[full]
 realtime-analytics --config /etc/analytics/pipeline.yaml
 ```
 
+## 可视化看板
+
+项目内置一个基于 FastAPI 的轻量看板，用于实时查看各路视频流的检测概况（帧号、轨迹数量、轨迹详情）。看板通过 Kafka 订阅流水线推送的事件。
+
+```bash
+# 安装看板相关依赖（uv）
+uv sync --extra dashboard
+
+# 启动看板，沿用流水线配置中的 Kafka 参数
+uv run realtime-analytics-dashboard --config my-pipeline.yaml --port 8080
+
+# 浏览器访问
+open http://localhost:8080
+```
+
+看板提供以下接口：
+
+- `/`：实时表格界面，WebSocket 推送最新的每路流数据。
+- `/api/snapshot`：返回当前所有流的检测快照（JSON）。
+- `/ws`：WebSocket 端点，可供自定义前端或服务接入。
+
+如需在界面中同步显示带检测框的最新帧，请在流水线配置里开启：
+
+```yaml
+kafka:
+  enabled: true
+  include_frames: true
+```
+
+若 Kafka 未启用，看板依然可以启动，但在收到检测事件前不会显示数据。
+
 ## 模型文件如何放置？
 
 1. 默认配置使用 `yolov8n.pt`。你可以从 [Ultralytics](https://github.com/ultralytics/ultralytics) 下载所需模型（如 `yolov8s.pt`、`yolov8m.pt` 等）。  
@@ -63,13 +96,12 @@ realtime-analytics --config /etc/analytics/pipeline.yaml
 
 ```yaml
 detector:
-  model_path: models/yolov8s.pt
-  device: cuda:0      # auto / cpu / cuda:0 / cuda:1...
+  backend: tensorrt
+  model_path: models/yolov8s_fp16.engine
+  input_size: [640, 640]
   conf_threshold: 0.5
   iou_threshold: 0.45
-  classes: null       # 指定类别 ID 列表时仅输出这些类别
-  half: true          # 使用半精度（需 GPU 支持）
-  warmup: true        # 首次运行进行一次暖机
+  half: true             # 若引擎以 FP16 构建
 ```
 
 ## 多流检测如何配置？
@@ -107,7 +139,7 @@ streams:
 ## 运行流程概览
 
 1. **VideoStream**（`video_stream.py`）：异步调用 OpenCV 打开 RTSP/RTMP 流，按配置进行暖机、限帧与断线重连。
-2. **Detector**（`detector.py`）：懒加载 YOLO 模型完成推理；可在未来替换为 TensorRT/DeepStream 推理引擎。
+2. **Detector**（`detector.py`）：可插拔的推理后端（Ultralytics、ONNX Runtime、TensorRT），统一输出检测结果。
 3. **IOUTracker**（`tracker.py`）：轻量级 IOU 匹配器，维护每路流的跟踪状态。
 4. **KafkaSink**（`sinks/kafka_sink.py`）：可选，将每帧的跟踪结果推送到 Kafka topic。
 5. **MetricsPublisher**（`telemetry/metrics.py`）：在 `http://host:port/metrics` 暴露 Prometheus 指标：帧数量、检测数量、活跃轨迹数等。
@@ -116,6 +148,7 @@ streams:
 ## Kafka 与 Prometheus
 
 - **Kafka**：在配置中启用 `kafka.enabled` 并填写 `bootstrap_servers`、`topic` 等字段。确保已经安装 `aiokafka` 并有权限访问 Kafka 集群。
+- 若要在看板中查看带检测框的实时图片，可将 `kafka.include_frames` 设置为 `true`，并根据需要调整 `frame_quality`。
 - **Prometheus**：默认启用。可将 `prometheus.host` 设置为 `0.0.0.0` 以供外部抓取，`port` 默认为 `9000`。在 Grafana 中添加数据源即可构建监控看板。
 
 ## 常见问题
