@@ -1,0 +1,34 @@
+[project]
+name = "realtime-video-analytics-32streams"
+version = "0.1.0"
+description = "Multi-stream realtime detection and tracking pipeline (YOLOv8 baseline, Kafka, Prometheus)."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Realtime Analytics" }
+]
+dependencies = [
+  "opencv-python>=4.8.0",
+  "numpy>=1.24.0",
+  "pyyaml>=6.0",
+  "prometheus-client>=0.16.0",
+]
+
+[project.optional-dependencies]
+detector = ["ultralytics>=8.0.0"]
+kafka = ["aiokafka>=0.10.0"]
+full = [
+  "ultralytics>=8.0.0",
+  "aiokafka>=0.10.0",
+]
+
+[project.scripts]
+realtime-analytics = "scripts.run_pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=67.0"]
+build-backend = "setuptools.build_meta"

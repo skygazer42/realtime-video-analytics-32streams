@@ -1,0 +1,51 @@
+---
+# Example pipeline configuration for realtime-video-analytics-32streams
+
+max_concurrent_streams: 32
+stats_interval_seconds: 15
+
+streams:
+  - name: camera-1
+    url: rtsp://example.com/stream1
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+  - name: camera-2
+    url: rtsp://example.com/stream2
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+
+detector:
+  model_path: yolov8n.pt
+  device: auto
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+  classes: null
+  half: false
+  warmup: true
+
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+kafka:
+  enabled: false
+  bootstrap_servers: localhost:9092
+  topic: analytics.events
+  linger_ms: 10
+  max_batch_size: 16384
+
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5
