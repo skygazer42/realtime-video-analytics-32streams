@@ -26,6 +26,9 @@ full = [
 [project.scripts]
 realtime-analytics = "scripts.run_pipeline:main"
 
+[tool.uv]
+package = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
