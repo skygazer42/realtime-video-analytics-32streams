@@ -13,6 +13,7 @@ from typing import List
 
 from .config import DetectorConfig, PipelineConfig, StreamConfig
 from .detector import BaseDetector, Detection, create_detector, filter_detections
+from .ffmpeg_simulator import FFmpegStreamError, FFmpegStreamSimulator
 from .sinks import KafkaSink
 from .telemetry import MetricsPublisher
 from .tracker import IOUTracker
@@ -196,11 +197,17 @@ class AnalyticsPipeline:
         self.metrics = MetricsPublisher(config.prometheus)
         self._tasks: List[asyncio.Task] = []
         self._stop_event = asyncio.Event()
+        self._ffmpeg_simulators: List[FFmpegStreamSimulator] = []
 
     async def start(self) -> None:
         LOGGER.info("Booting analytics pipeline")
         await self.metrics.start()
         await self.kafka.connect()
+        try:
+            self._start_ffmpeg_simulators()
+        except FFmpegStreamError:
+            self._stop_ffmpeg_simulators()
+            raise
 
         detector_configs: dict[str, DetectorConfig] = {"__default__": self.config.detector}
         detector_configs.update(self.config.detectors)
@@ -273,12 +280,33 @@ class AnalyticsPipeline:
                 LOGGER.exception("Stream worker task raised")
         await self.kafka.close()
         await self.metrics.stop()
+        self._stop_ffmpeg_simulators()
 
     async def run_forever(self) -> None:
         try:
             await self.start()
         finally:
             await self.wait_closed()
+
+    def _start_ffmpeg_simulators(self) -> None:
+        for stream in self.config.streams:
+            sim_cfg = stream.ffmpeg_simulator
+            if not sim_cfg or not sim_cfg.enabled:
+                continue
+            simulator = FFmpegStreamSimulator(stream, sim_cfg)
+            simulator.start()
+            self._ffmpeg_simulators.append(simulator)
+
+    def _stop_ffmpeg_simulators(self) -> None:
+        while self._ffmpeg_simulators:
+            simulator = self._ffmpeg_simulators.pop()
+            try:
+                simulator.stop()
+            except Exception:
+                LOGGER.exception(
+                    "Error while stopping ffmpeg simulator for stream '%s'",
+                    simulator.stream.name,
+                )
 
 
 def run_from_config(config: PipelineConfig) -> None:

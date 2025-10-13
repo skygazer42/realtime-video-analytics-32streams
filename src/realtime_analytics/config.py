@@ -16,6 +16,42 @@ class ConfigError(RuntimeError):
 
 
 @dataclass(slots=True)
+class FFmpegSimulatorConfig:
+    """Configuration for spawning an ffmpeg process to emulate a camera stream."""
+
+    enabled: bool = False
+    input: str = ""
+    loop: bool = True
+    listen_host: Optional[str] = None
+    log_level: str = "warning"
+    video_codec: str = "libx264"
+    audio_enabled: bool = False
+    audio_codec: str = "aac"
+    extra_args: List[str] = field(default_factory=list)
+
+    def validate(self, stream: "StreamConfig" | None = None) -> None:
+        if not self.enabled:
+            return
+        if not self.input:
+            raise ConfigError("ffmpeg_simulator.input must not be empty when enabled")
+        if stream is not None:
+            if not stream.url:
+                raise ConfigError(
+                    f"Stream '{stream.name}' must define url when ffmpeg_simulator is enabled"
+                )
+            scheme = stream.url.split(":", 1)[0].lower()
+            if scheme != "rtsp":
+                raise ConfigError(
+                    f"Stream '{stream.name}' uses scheme '{scheme}', "
+                    "ffmpeg_simulator currently supports only RTSP outputs"
+                )
+        if self.video_codec and not isinstance(self.video_codec, str):
+            raise ConfigError("ffmpeg_simulator.video_codec must be a string or empty")
+        if self.audio_enabled and not self.audio_codec:
+            raise ConfigError("ffmpeg_simulator.audio_codec must be set when audio_enabled is true")
+
+
+@dataclass(slots=True)
 class StreamConfig:
     """Configuration for a single RTSP/RTMP stream."""
 
@@ -35,6 +71,11 @@ class StreamConfig:
     adaptive_fps: bool = False
     min_target_fps: float = 5.0
     idle_frame_tolerance: int = 60
+    ffmpeg_simulator: Optional[FFmpegSimulatorConfig] = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.ffmpeg_simulator, dict):
+            self.ffmpeg_simulator = FFmpegSimulatorConfig(**self.ffmpeg_simulator)
 
     def validate(self) -> None:
         if not self.name:
@@ -59,6 +100,8 @@ class StreamConfig:
             raise ConfigError(
                 f"Stream '{self.name}' min_target_fps must be > 0 and <= target_fps when adaptive_fps is enabled"
             )
+        if self.ffmpeg_simulator and self.ffmpeg_simulator.enabled:
+            self.ffmpeg_simulator.validate(self)
 
 
 @dataclass(slots=True)

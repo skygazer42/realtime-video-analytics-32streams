@@ -118,6 +118,31 @@ Everything is expressed in YAML (see `config/sample-pipeline.yaml`). Key section
 
 `src/realtime_analytics/config.py` declares the dataclasses, validation logic, and defaults. For backend-specific setup guides (Ultralytics YOLO / TensorRT) see `docs/model_integration_cn.md`.
 
+## Simulating cameras with ffmpeg
+
+Need a disposable RTSP source for development? Enable the built-in ffmpeg simulator on any stream (requires `ffmpeg` in `PATH`). The pipeline will launch an ffmpeg subprocess that listens on the stream URL and loops your media file.
+
+```yaml
+streams:
+  - name: camera-simulated
+    url: rtsp://127.0.0.1:8554/camera-sim
+    enabled: true
+    ffmpeg_simulator:
+      enabled: true
+      input: data/samples/demo.mp4     # any local file / network source supported by ffmpeg
+      listen_host: 0.0.0.0             # optional; defaults to 0.0.0.0
+      loop: true                       # replays endlessly
+      extra_args:
+        - "-vf"
+        - "scale=1280:720"             # example: resize before streaming
+```
+
+- The stream `url` must be RTSP. The simulator exposes an RTSP server (`-rtsp_flags listen`) bound to `listen_host` (defaults to `0.0.0.0`) and the port encoded in the URL (default 8554).
+- Video is re-encoded with `libx264` by default. Set `video_codec: copy` or append to `extra_args` to customise the pipeline.
+- Set `audio_enabled: true` to forward audio via `AAC`, or keep the default silent stream.
+
+When the pipeline shuts down it terminates the ffmpeg subprocess automatically. Logs from ffmpeg are forwarded at DEBUG level.
+
 ## Module layout
 
 - `video_stream.py` – async wrapper around OpenCV capture, handles warm-up, retries, and frame pacing.

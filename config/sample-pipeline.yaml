@@ -15,6 +15,15 @@ streams:
     reconnect_backoff: 5.0
     max_retries: null
     detector_id: entrance
+    # ffmpeg_simulator 可用于在本地通过 ffmpeg 推流模拟摄像头
+    # ffmpeg_simulator:
+    #   enabled: true
+    #   input: data/samples/traffic.mp4
+    #   listen_host: 0.0.0.0
+    #   loop: true
+    #   extra_args:
+    #     - "-vf"
+    #     - "scale=1280:720"
   - name: camera-2
     url: rtsp://example.com/stream2
     enabled: true
@@ -24,6 +33,21 @@ streams:
     reconnect_backoff: 5.0
     max_retries: null
     detector_id: parking
+  - name: camera-simulated
+    url: rtsp://127.0.0.1:8554/camera-sim
+    enabled: false
+    target_fps: 15
+    warmup_seconds: 1.0
+    reconnect_backoff: 3.0
+    max_retries: null
+    ffmpeg_simulator:
+      enabled: true
+      input: data/samples/demo.mp4
+      listen_host: 0.0.0.0
+      loop: true
+      extra_args:
+        - "-vf"
+        - "scale=1280:720"
 
 # 默认检测器（streams 未设置 detector_id 时使用）
 detector:

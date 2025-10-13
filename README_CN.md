@@ -205,3 +205,28 @@ streams:
 - 扩展健康检查和告警机制（例如监控断流、帧率下降）。
 
 如需进一步定制，可直接修改 `src/realtime_analytics` 目录下的各模块，或继承现有类实现自己的处理逻辑。
+
+## 使用 ffmpeg 模拟摄像头
+
+在没有真实摄像头的情况下，可以在任意流上开启 `ffmpeg_simulator`，流水线会自动启动一个 ffmpeg 子进程，将本地/网络视频循环推送为 RTSP 服务（需确保系统已安装 `ffmpeg`）。
+
+```yaml
+streams:
+  - name: camera-sim
+    url: rtsp://127.0.0.1:8554/camera-sim
+    enabled: true
+    ffmpeg_simulator:
+      enabled: true
+      input: data/samples/demo.mp4   # 任意 ffmpeg 可读取的来源
+      listen_host: 0.0.0.0           # 可选，默认 0.0.0.0
+      loop: true                     # 循环播放
+      extra_args:
+        - "-vf"
+        - "scale=1280:720"           # 示例：推流前缩放分辨率
+```
+
+- `url` 必须为 RTSP 地址。模拟器会在该端口上以 `-rtsp_flags listen` 方式对外提供服务。
+- 默认使用 `libx264` 重编码视频。如需转封装可将 `video_codec` 设置为 `copy`，或通过 `extra_args` 追加自定义参数。
+- 如需音频推流，将 `audio_enabled` 设为 `true`（默认使用 AAC）；否则保持静音流。
+
+流水线关闭时会自动回收 ffmpeg 子进程，ffmpeg 输出会以 DEBUG 日志级别打印。
