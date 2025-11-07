@@ -106,11 +106,26 @@ class StreamConfig:
 
 @dataclass(slots=True)
 class DetectorConfig:
-    """Detector/YOLO specific configuration."""
+    """
+    Detector configuration supporting multiple model types and backends.
+
+    Supported model types:
+    - yolov5: YOLOv5 object detection
+    - yolov8: YOLOv8 object detection
+    - resnet: ResNet classification
+
+    Supported backends:
+    - ultralytics: Ultralytics YOLO (YOLOv5, YOLOv8)
+    - tensorrt: NVIDIA TensorRT (YOLOv5, YOLOv8)
+    - onnx/onnxruntime: ONNX Runtime (YOLOv5, YOLOv8, ResNet)
+    - openvino: Intel OpenVINO (YOLOv5, YOLOv8, ResNet)
+    - rknn: Rockchip RK3588 (YOLOv5, YOLOv8)
+    """
 
     model_path: str = "yolov8n.pt"
     device: str = "auto"
-    backend: str = "ultralytics"  # ultralytics | tensorrt
+    backend: str = "ultralytics"
+    model_type: str = "yolov8"  # yolov5 | yolov8 | resnet
     conf_threshold: float = 0.5
     iou_threshold: float = 0.45
     classes: Optional[List[int]] = None
@@ -119,12 +134,18 @@ class DetectorConfig:
     input_size: Optional[List[int]] = None  # H,W
     tensorrt_max_workspace_size: int = 1 << 30  # 1 GiB
     tensorrt_use_fp16: bool = False
+    resnet_num_classes: int = 1000  # For ResNet classification
+    resnet_top_k: int = 5  # Return top-K predictions for ResNet
 
     def validate(self) -> None:
         if not self.model_path:
             raise ConfigError("Detector model_path must not be empty")
-        if self.backend not in {"ultralytics", "tensorrt"}:
-            raise ConfigError("Detector backend must be one of ultralytics|tensorrt")
+        valid_backends = {"ultralytics", "tensorrt", "onnx", "onnxruntime", "openvino", "rknn", "rk3588"}
+        if self.backend not in valid_backends:
+            raise ConfigError(f"Detector backend must be one of {valid_backends}")
+        valid_model_types = {"yolov5", "yolov8", "resnet"}
+        if self.model_type not in valid_model_types:
+            raise ConfigError(f"Model type must be one of {valid_model_types}")
         if not (0.0 < self.conf_threshold <= 1.0):
             raise ConfigError("conf_threshold must be in (0, 1]")
         if not (0.0 < self.iou_threshold <= 1.0):
@@ -133,6 +154,13 @@ class DetectorConfig:
             raise ConfigError("input_size must be [height, width]")
         if self.tensorrt_max_workspace_size <= 0:
             raise ConfigError("tensorrt_max_workspace_size must be > 0")
+        if self.model_type == "resnet":
+            if self.backend not in {"openvino", "onnx", "onnxruntime"}:
+                raise ConfigError("ResNet models currently only supported with OpenVINO or ONNX Runtime backends")
+            if self.resnet_num_classes <= 0:
+                raise ConfigError("resnet_num_classes must be > 0")
+            if self.resnet_top_k <= 0:
+                raise ConfigError("resnet_top_k must be > 0")
 
 
 @dataclass(slots=True)

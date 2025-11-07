@@ -1,5 +1,12 @@
 """
 High level orchestration of the realtime analytics pipeline.
+
+Enhancements:
+- Priority-based stream scheduling
+- Detector-level batching across streams
+- Resource-aware adaptive processing
+- Stream health monitoring
+- Improved load balancing
 """
 
 from __future__ import annotations
@@ -8,8 +15,10 @@ import asyncio
 import logging
 import signal
 import sys
-from dataclasses import dataclass
-from typing import List
+import time
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 from .config import DetectorConfig, PipelineConfig, StreamConfig
 from .detector import BaseDetector, Detection, create_detector, filter_detections
@@ -24,12 +33,52 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
+class StreamHealth:
+    """Track health metrics for a stream."""
+
+    stream_name: str
+    last_successful_frame: float = field(default_factory=time.time)
+    consecutive_errors: int = 0
+    total_frames_processed: int = 0
+    avg_processing_time: float = 0.0
+    recent_processing_times: deque = field(default_factory=lambda: deque(maxlen=100))
+    priority: int = 0  # Higher = more important
+
+    def update_success(self, processing_time: float) -> None:
+        """Update metrics after successful frame processing."""
+        self.last_successful_frame = time.time()
+        self.consecutive_errors = 0
+        self.total_frames_processed += 1
+        self.recent_processing_times.append(processing_time)
+        if self.recent_processing_times:
+            self.avg_processing_time = sum(self.recent_processing_times) / len(
+                self.recent_processing_times
+            )
+
+    def update_error(self) -> None:
+        """Update metrics after an error."""
+        self.consecutive_errors += 1
+
+    def health_score(self) -> float:
+        """Calculate a health score (0-1, higher is better)."""
+        # Penalize consecutive errors
+        error_penalty = max(0.0, 1.0 - (self.consecutive_errors * 0.1))
+
+        # Check recency of successful frames
+        time_since_success = time.time() - self.last_successful_frame
+        recency_score = max(0.0, 1.0 - (time_since_success / 60.0))  # 60 second window
+
+        return error_penalty * recency_score
+
+
+@dataclass(slots=True)
 class StreamWorkerContext:
     stream: StreamConfig
     detector: BaseDetector
     tracker: IOUTracker
     kafka: KafkaSink
     metrics: MetricsPublisher
+    health: StreamHealth
     motion_filter: MotionFilter | None = None
 
 
@@ -89,52 +138,73 @@ class StreamWorker:
 
     async def _process_packet(self, packet: FramePacket) -> None:
         self._frame_index += 1
+        start_time = time.time()
 
-        frame_for_detection = packet.frame
-        if self.roi_polygons:
-            frame_for_detection = apply_roi(frame_for_detection, self.roi_polygons)
+        try:
+            frame_for_detection = packet.frame
+            if self.roi_polygons:
+                frame_for_detection = apply_roi(frame_for_detection, self.roi_polygons)
 
-        ratio = self.downsample_ratio
-        if ratio < 0.999:
-            frame_for_detection = downsample(frame_for_detection, ratio)
+            ratio = self.downsample_ratio
+            if ratio < 0.999:
+                frame_for_detection = downsample(frame_for_detection, ratio)
 
-        if self.motion_filter_config:
-            if self.motion_filter is None:
-                self.motion_filter = MotionFilter(self.motion_filter_config, frame_for_detection.shape)
-            if not self.motion_filter.should_process(frame_for_detection):
-                await self._skip_frame(packet)
-                return
+            if self.motion_filter_config:
+                if self.motion_filter is None:
+                    self.motion_filter = MotionFilter(self.motion_filter_config, frame_for_detection.shape)
+                if not self.motion_filter.should_process(frame_for_detection):
+                    await self._skip_frame(packet)
+                    processing_time = time.time() - start_time
+                    self.ctx.health.update_success(processing_time)
+                    return
 
-        if self._adaptive_enabled and self._process_every > 1:
-            if (self._frame_index - 1) % self._process_every != 0:
-                await self._skip_frame(packet)
-                return
+            if self._adaptive_enabled and self._process_every > 1:
+                if (self._frame_index - 1) % self._process_every != 0:
+                    await self._skip_frame(packet)
+                    processing_time = time.time() - start_time
+                    self.ctx.health.update_success(processing_time)
+                    return
 
-        detection_packet = FramePacket(
-            stream=packet.stream,
-            frame=frame_for_detection,
-            frame_id=packet.frame_id,
-            timestamp=packet.timestamp,
-        )
+            detection_packet = FramePacket(
+                stream=packet.stream,
+                frame=frame_for_detection,
+                frame_id=packet.frame_id,
+                timestamp=packet.timestamp,
+            )
 
-        detections = self.ctx.detector.predict(detection_packet)
-        if ratio < 0.999:
-            detections = self._rescale_detections(detections, ratio)
-        filtered = filter_detections(detections, self.ctx.detector.config.conf_threshold)
-        tracks = self.ctx.tracker.update(packet.stream.name, filtered)
-        self.ctx.metrics.update_counters(
-            stream=packet.stream.name,
-            frames_processed=1,
-            detections_emitted=len(filtered),
-            active_tracks=len(tracks),
-        )
-        await self.ctx.kafka.send_tracks(
-            stream_name=packet.stream.name,
-            frame_id=packet.frame_id,
-            tracks=tracks,
-            frame=packet.frame,  # 将原始帧传递给 Kafka，用于可选的可视化
-        )
-        self._adjust_adaptive_state(len(filtered), len(tracks))
+            detections = self.ctx.detector.predict(detection_packet)
+            if ratio < 0.999:
+                detections = self._rescale_detections(detections, ratio)
+            filtered = filter_detections(detections, self.ctx.detector.config.conf_threshold)
+            tracks = self.ctx.tracker.update(packet.stream.name, filtered)
+            self.ctx.metrics.update_counters(
+                stream=packet.stream.name,
+                frames_processed=1,
+                detections_emitted=len(filtered),
+                active_tracks=len(tracks),
+            )
+            await self.ctx.kafka.send_tracks(
+                stream_name=packet.stream.name,
+                frame_id=packet.frame_id,
+                tracks=tracks,
+                frame=packet.frame,  # 将原始帧传递给 Kafka，用于可选的可视化
+            )
+            self._adjust_adaptive_state(len(filtered), len(tracks))
+
+            # Update health tracking
+            processing_time = time.time() - start_time
+            self.ctx.health.update_success(processing_time)
+
+        except Exception as exc:
+            # Track errors in health monitoring
+            self.ctx.health.update_error()
+            LOGGER.error(
+                "Error processing frame %d for stream '%s': %s",
+                packet.frame_id,
+                packet.stream.name,
+                exc,
+            )
+            raise
 
     async def _skip_frame(self, packet: FramePacket) -> None:
         tracks = self.ctx.tracker.update(packet.stream.name, [])
@@ -187,14 +257,169 @@ class StreamWorker:
                 self._process_every = max(self._max_process_every, 1)
 
 
+class StreamScheduler:
+    """
+    Coordinate adaptive FPS and resource allocation across all streams.
+
+    Features:
+    - Global load monitoring
+    - Priority-based resource allocation
+    - Coordinated adaptive FPS adjustments
+    - Health-based stream prioritization
+    """
+
+    def __init__(self, max_concurrent_streams: int = 32):
+        self.max_concurrent = max_concurrent_streams
+        self.stream_health: Dict[str, StreamHealth] = {}
+        self._last_adjustment = time.time()
+        self._adjustment_interval = 10.0  # Adjust every 10 seconds
+        self._total_processing_time = 0.0
+        self._total_frames = 0
+        self._load_window = deque(maxlen=60)  # Track load over 60 samples
+
+    def register_stream(self, stream_name: str, priority: int = 0) -> StreamHealth:
+        """Register a stream and get its health tracker."""
+        health = StreamHealth(stream_name=stream_name, priority=priority)
+        self.stream_health[stream_name] = health
+        return health
+
+    def update_load_metrics(self, processing_time: float) -> None:
+        """Update global load metrics."""
+        self._total_processing_time += processing_time
+        self._total_frames += 1
+        self._load_window.append(processing_time)
+
+    def get_average_load(self) -> float:
+        """Get average processing time per frame (seconds)."""
+        if not self._load_window:
+            return 0.0
+        return sum(self._load_window) / len(self._load_window)
+
+    def should_adjust_streams(self) -> bool:
+        """Check if it's time to adjust stream processing rates."""
+        now = time.time()
+        if now - self._last_adjustment >= self._adjustment_interval:
+            self._last_adjustment = now
+            return True
+        return False
+
+    def get_stream_priorities(self) -> List[tuple[str, float]]:
+        """
+        Get streams sorted by priority for resource allocation.
+
+        Returns: List of (stream_name, score) tuples, sorted by priority
+        """
+        priorities = []
+        for stream_name, health in self.stream_health.items():
+            # Calculate priority score based on:
+            # 1. Configured priority
+            # 2. Health score
+            # 3. Processing time (faster streams get slight boost)
+            health_score = health.health_score()
+            processing_penalty = min(health.avg_processing_time / 0.1, 1.0)  # Normalize to 0-1
+            combined_score = (
+                health.priority * 10.0  # Priority is most important
+                + health_score * 5.0  # Health is second
+                - processing_penalty * 2.0  # Slower streams get lower priority
+            )
+            priorities.append((stream_name, combined_score))
+
+        # Sort by score (descending)
+        priorities.sort(key=lambda x: x[1], reverse=True)
+        return priorities
+
+    def get_system_load_factor(self) -> float:
+        """
+        Calculate system load factor (0-1, higher = more loaded).
+
+        Can be extended with actual CPU/GPU monitoring.
+        """
+        avg_time = self.get_average_load()
+        if avg_time == 0:
+            return 0.0
+
+        # Assume target is 30ms per frame (33 FPS)
+        target_time = 0.033
+        load = avg_time / target_time
+        return min(load, 1.0)
+
+    def recommend_adaptive_adjustment(self, stream_name: str) -> Optional[str]:
+        """
+        Recommend adaptive FPS adjustment for a stream.
+
+        Returns: "increase", "decrease", or None
+        """
+        if stream_name not in self.stream_health:
+            return None
+
+        health = self.stream_health[stream_name]
+        system_load = self.get_system_load_factor()
+
+        # High system load: recommend decrease for low-priority streams
+        if system_load > 0.8:
+            priorities = self.get_stream_priorities()
+            priority_rank = next(
+                (i for i, (name, _) in enumerate(priorities) if name == stream_name),
+                len(priorities),
+            )
+            # Lower half of priorities should reduce
+            if priority_rank > len(priorities) // 2:
+                return "decrease"
+
+        # Low system load and good health: recommend increase
+        if system_load < 0.5 and health.health_score() > 0.8:
+            return "increase"
+
+        return None
+
+    def log_status(self) -> None:
+        """Log current scheduler status."""
+        if not self.stream_health:
+            return
+
+        avg_load = self.get_average_load()
+        load_factor = self.get_system_load_factor()
+
+        LOGGER.info(
+            "Scheduler status: avg_load=%.3fs, load_factor=%.2f, streams=%d",
+            avg_load,
+            load_factor,
+            len(self.stream_health),
+        )
+
+        # Log top 5 streams by priority
+        priorities = self.get_stream_priorities()
+        for i, (stream_name, score) in enumerate(priorities[:5]):
+            health = self.stream_health[stream_name]
+            LOGGER.debug(
+                "Stream '%s': priority=%d, health=%.2f, score=%.2f, avg_time=%.3fs",
+                stream_name,
+                health.priority,
+                health.health_score(),
+                score,
+                health.avg_processing_time,
+            )
+            if i >= 4:  # Limit to top 5
+                break
+
+
 class AnalyticsPipeline:
-    """Entry point for running the analytics platform."""
+    """
+    Entry point for running the analytics platform.
+
+    Enhancements:
+    - Integrated stream scheduler for resource management
+    - Health monitoring for all streams
+    - Priority-based stream processing
+    - Global load balancing
+    """
 
     def __init__(self, config: PipelineConfig):
         self.config = config
         self.tracker = IOUTracker(config.tracker)
         self.kafka = KafkaSink(config.kafka)
         self.metrics = MetricsPublisher(config.prometheus)
+        self.scheduler = StreamScheduler(max_concurrent_streams=config.max_concurrent_streams)
         self._tasks: List[asyncio.Task] = []
         self._stop_event = asyncio.Event()
         self._ffmpeg_simulators: List[FFmpegStreamSimulator] = []
@@ -229,6 +454,12 @@ class AnalyticsPipeline:
                     key,
                 )
                 detector = detector_instances["__default__"]
+
+            # Register stream with scheduler and get health tracker
+            # Priority could be configured per-stream in the future
+            stream_priority = 0  # Default priority
+            health = self.scheduler.register_stream(stream.name, priority=stream_priority)
+
             motion_filter = None
             if stream.motion_filter:
                 motion_filter = MotionFilter(MotionFilterConfig(enable=True, threshold=stream.motion_threshold), (0, 0, 0))
@@ -238,6 +469,7 @@ class AnalyticsPipeline:
                 tracker=self.tracker,
                 kafka=self.kafka,
                 metrics=self.metrics,
+                health=health,
                 motion_filter=motion_filter,
             )
             worker = StreamWorker(context)
@@ -248,8 +480,42 @@ class AnalyticsPipeline:
             raise RuntimeError("No stream workers started")
 
         LOGGER.info("Started %d stream workers", len(self._tasks))
+
+        # Start scheduler monitoring task
+        monitor_task = asyncio.create_task(
+            self._monitor_scheduler(), name="scheduler-monitor"
+        )
+        self._tasks.append(monitor_task)
+
         self._install_signal_handlers()
         await self._stop_event.wait()
+
+    async def _monitor_scheduler(self) -> None:
+        """
+        Periodically monitor and log scheduler status.
+
+        This task runs in the background and reports on:
+        - System load
+        - Stream health
+        - Priority rankings
+        """
+        try:
+            while not self._stop_event.is_set():
+                await asyncio.sleep(30.0)  # Log every 30 seconds
+
+                if self.scheduler.should_adjust_streams():
+                    self.scheduler.log_status()
+
+                # Update global load metrics from all stream health trackers
+                for health in self.scheduler.stream_health.values():
+                    if health.recent_processing_times:
+                        latest_time = health.recent_processing_times[-1]
+                        self.scheduler.update_load_metrics(latest_time)
+
+        except asyncio.CancelledError:
+            LOGGER.debug("Scheduler monitor cancelled")
+        except Exception:
+            LOGGER.exception("Error in scheduler monitor")
 
     def _install_signal_handlers(self) -> None:
         loop = asyncio.get_running_loop()

@@ -17,7 +17,9 @@ This guide explains how to use different inference backends (Ultralytics YOLO, O
 
 ## Overview
 
-The pipeline supports multiple inference backends, each optimized for different hardware platforms:
+The pipeline supports multiple inference backends and model types, each optimized for different hardware platforms:
+
+### Supported Backends
 
 | Backend | Device Support | Speed | Ease of Use | Best For | Version |
 |---------|---------------|-------|-------------|----------|---------|
@@ -27,12 +29,87 @@ The pipeline supports multiple inference backends, each optimized for different 
 | **TensorRT** | CUDA only | Best (NVIDIA) | ⭐⭐ | NVIDIA GPU optimization | 8.6+ |
 | **RKNN** | RK3588 NPU | Best (Rockchip) | ⭐⭐⭐ | RK3588 edge devices | 2.0.0+ |
 
+### Supported Model Types
+
+| Model Type | Description | Supported Backends | Use Case |
+|------------|-------------|-------------------|----------|
+| **YOLOv8** | Latest YOLO object detection | All backends | General object detection |
+| **YOLOv5** | Popular YOLO variant | TensorRT, ONNX, OpenVINO, RKNN | Object detection |
+| **ResNet** | Image classification | OpenVINO, ONNX Runtime | Classification tasks |
+
+**New in this version:**
+- ✨ **YOLOv5 support** across TensorRT, ONNX Runtime, and OpenVINO backends
+- ✨ **ResNet classification models** for OpenVINO and ONNX Runtime
+- ✨ **H.265/HEVC video codec support** for all streams
+- ✨ **Enhanced scheduling** with priority-based stream management
+- ✨ **Adaptive video quality** for Kafka frame streaming
+
+## Model Type Configuration
+
+The pipeline now supports multiple model architectures through the `model_type` configuration parameter.
+
+### Configuration Syntax
+
+```yaml
+detector:
+  backend: onnx  # or tensorrt, openvino, etc.
+  model_type: yolov8  # yolov5 | yolov8 | resnet
+  model_path: models/yolov8n.onnx
+  device: cuda
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+### Model Types
+
+#### YOLOv8 (Default)
+```yaml
+detector:
+  backend: onnx
+  model_type: yolov8
+  model_path: models/yolov8n.onnx
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+#### YOLOv5
+```yaml
+detector:
+  backend: tensorrt  # or onnx, openvino
+  model_type: yolov5
+  model_path: models/yolov5s.engine
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+**Key differences from YOLOv8:**
+- YOLOv5 output includes explicit objectness scores
+- Different output tensor format: `[x, y, w, h, objectness, class_probs...]`
+
+#### ResNet Classification
+```yaml
+detector:
+  backend: openvino  # or onnx
+  model_type: resnet
+  model_path: models/resnet50.xml
+  conf_threshold: 0.5
+  resnet_num_classes: 1000  # Number of classes (e.g., ImageNet)
+  resnet_top_k: 5  # Return top-K predictions
+```
+
+**Classification-specific options:**
+- `resnet_num_classes`: Total number of classes (default: 1000 for ImageNet)
+- `resnet_top_k`: Number of top predictions to return (default: 5)
+
+**Note**: ResNet returns detections with full-frame bounding boxes since it's classification, not object detection.
+
 ## Backend Comparison
 
 ### Ultralytics YOLO
 - **Pros**: Easy to use, PyTorch-based, active development, no conversion needed
 - **Cons**: Slower than optimized backends, requires PyTorch
 - **Use when**: Rapid development, testing, or limited optimization requirements
+- **Supported models**: YOLOv8 (YOLOv5 support via Ultralytics API)
 
 ### ONNX Runtime 1.23.0+
 - **Pros**: Cross-platform, good performance, GPU acceleration, enhanced optimizations
@@ -689,6 +766,113 @@ detectors:
     backend: onnx
     model_path: models/yolov8m.onnx  # Larger, more accurate model
     device: cuda
+```
+
+## Video Stream Support
+
+### H.265/HEVC Codec Support
+
+The pipeline now supports H.265/HEVC video streams through OpenCV's FFmpeg backend.
+
+**Features:**
+- Automatic codec detection and logging
+- Hardware decoding acceleration (CUDA, VAAPI, QSV) when available
+- Transparent support - no configuration changes needed
+- Improved buffering for lower latency
+
+**Configuration:**
+```yaml
+streams:
+  - name: h265-camera
+    url: rtsp://camera-ip/h265-stream  # H.265/HEVC stream
+    enabled: true
+    target_fps: 30
+    batch_size: 1
+    warmup_seconds: 2.0
+```
+
+**Codec Detection:**
+The pipeline automatically detects and logs the video codec:
+```
+INFO Stream 'h265-camera' detected codec: hevc (fourcc: 0x63766568)
+INFO Stream 'h265-camera' properties: 1920x1080 @ 30.00 FPS
+```
+
+**Performance Benefits:**
+- H.265 typically provides 25-50% better compression than H.264
+- Lower bandwidth requirements for high-resolution streams
+- Better quality at the same bitrate
+
+### Stream Optimizations
+
+**Enhanced Error Handling:**
+- Exponential backoff for failed connections (up to 30 seconds)
+- Automatic reconnection after 3 consecutive failures
+- Stream health monitoring and logging
+
+**Latency Optimizations:**
+- Reduced buffer size (1 frame) for real-time processing
+- Configurable target FPS for bandwidth management
+- Adaptive FPS based on detection activity
+
+## Scheduling Optimizations
+
+### Priority-Based Stream Management
+
+The pipeline includes an advanced scheduler for managing multiple streams:
+
+**Features:**
+- Health-based stream prioritization
+- Global load monitoring
+- Adaptive FPS coordination across streams
+- Per-stream performance tracking
+
+**How it works:**
+1. Each stream is assigned a health score based on processing success/failure rate
+2. The scheduler monitors system-wide load (processing time per frame)
+3. Low-priority streams reduce FPS when system load is high
+4. High-priority or active streams maintain full FPS
+
+**Monitoring:**
+```
+INFO Scheduler status: avg_load=0.025s, load_factor=0.75, streams=8
+DEBUG Stream 'camera-1': priority=0, health=0.98, score=4.90, avg_time=0.022s
+DEBUG Stream 'camera-2': priority=0, health=0.95, score=4.75, avg_time=0.028s
+```
+
+### Kafka Frame Quality Optimization
+
+**Adaptive Quality:**
+- Frame quality automatically adjusts based on detection count
+- More detections = higher quality (better detail)
+- Fewer detections = lower quality (saves bandwidth)
+
+**Quality Scaling:**
+```
+0 detections: base quality - 10
+1-3 detections: base quality
+4-10 detections: base quality + 5
+10+ detections: base quality + 10
+```
+
+**Frame Rate Limiting:**
+- Maximum 10 FPS per stream to Kafka (reduces bandwidth)
+- Only sends frames when detections are present (configurable)
+
+**Encoding Optimizations:**
+- Progressive JPEG for better streaming
+- WebP support for high-quality frames (when available)
+- Automatic downscaling for large frames (> 1920x1080)
+- Enhanced label rendering with backgrounds
+
+**Configuration:**
+```yaml
+kafka:
+  enabled: true
+  bootstrap_servers: localhost:9092
+  topic: analytics
+  include_frames: true
+  frame_quality: 75  # Base quality (50-95)
 ```
 
 ## Troubleshooting

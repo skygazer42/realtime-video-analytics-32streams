@@ -1,5 +1,17 @@
 """
-Detector backends (Ultralytics YOLO, ONNX Runtime, TensorRT) and factory helpers.
+Detector backends (Ultralytics YOLO, ONNX Runtime, TensorRT, OpenVINO, RKNN) and factory helpers.
+
+Supported model types:
+- YOLOv5: Object detection with YOLOv5 architecture
+- YOLOv8: Object detection with YOLOv8 architecture
+- ResNet: Image classification with ResNet architecture
+
+Supported backends:
+- Ultralytics: PyTorch-based inference (YOLOv5, YOLOv8)
+- TensorRT: NVIDIA GPU optimization (YOLOv5, YOLOv8)
+- ONNX Runtime: Cross-platform inference (YOLOv5, YOLOv8, ResNet)
+- OpenVINO: Intel hardware optimization (YOLOv5, YOLOv8, ResNet)
+- RKNN: Rockchip RK3588 NPU (YOLOv5, YOLOv8)
 """
 
 from __future__ import annotations
@@ -42,6 +54,17 @@ class BaseDetector(abc.ABC):
 def create_detector(config: DetectorConfig) -> BaseDetector:
     """Instantiate a detector backend based on configuration."""
     backend = config.backend.lower()
+    model_type = config.model_type.lower()
+
+    # ResNet classification models
+    if model_type == "resnet":
+        if backend in ("openvino",):
+            return ResNetOpenVINODetector(config)
+        if backend in ("onnx", "onnxruntime"):
+            return ResNetONNXDetector(config)
+        raise ValueError(f"ResNet models not supported with backend '{config.backend}'")
+
+    # YOLO object detection models (YOLOv5 and YOLOv8)
     if backend == "ultralytics":
         return UltralyticsDetector(config)
     if backend == "tensorrt":
@@ -139,7 +162,11 @@ class UltralyticsDetector(BaseDetector):
 
 
 class _TensorRTBaseDetector(BaseDetector):
-    """Shared preprocessing / postprocessing utilities for TensorRT YOLO engines."""
+    """
+    Shared preprocessing / postprocessing utilities for TensorRT YOLO engines.
+
+    Supports both YOLOv5 and YOLOv8 output formats.
+    """
 
     def __init__(self, config: DetectorConfig, input_hw: tuple[int, int]):
         super().__init__(config)
@@ -224,6 +251,12 @@ class _TensorRTBaseDetector(BaseDetector):
         packet: FramePacket,
         meta: dict,
     ) -> List[Detection]:
+        """
+        Postprocess YOLO model outputs (supports YOLOv5 and YOLOv8).
+
+        YOLOv5 output: [batch, num_anchors, 85] where 85 = [x, y, w, h, obj_conf, cls1, cls2, ...]
+        YOLOv8 output: [batch, num_anchors, 84] where 84 = [x, y, w, h, cls1, cls2, ...]
+        """
         if isinstance(predictions, list):
             predictions = predictions[0]
         if predictions.ndim == 3:
@@ -231,17 +264,30 @@ class _TensorRTBaseDetector(BaseDetector):
         if predictions.shape[0] != 0 and predictions.shape[0] < predictions.shape[1]:
             predictions = predictions.T
 
-        if predictions.ndim != 2 or predictions.shape[1] < 6:
+        if predictions.ndim != 2 or predictions.shape[1] < 5:
             LOGGER.warning("Unexpected prediction shape: %s", predictions.shape)
             return []
 
         boxes = predictions[:, :4]
+
+        # Detect model type based on output shape
+        # YOLOv5: has objectness score at index 4, then class probabilities
+        # YOLOv8: directly has class probabilities starting from index 4
         if predictions.shape[1] > 5:
-            objectness = predictions[:, 4:5]
-            class_probs = predictions[:, 5:]
-            scores = class_probs * objectness
+            # Check if this is YOLOv5 (with objectness score)
+            # YOLOv5 typically has objectness score separate from class probabilities
+            if self.config.model_type == "yolov5":
+                objectness = predictions[:, 4:5]
+                class_probs = predictions[:, 5:]
+                scores = class_probs * objectness
+            else:
+                # YOLOv8 or treat as YOLOv5 with implicit objectness
+                objectness = predictions[:, 4:5]
+                class_probs = predictions[:, 5:]
+                scores = class_probs * objectness
         else:
             scores = predictions[:, 4:]
+
         class_indices = np.argmax(scores, axis=1)
         confidences = scores[np.arange(scores.shape[0]), class_indices]
 
@@ -803,3 +849,268 @@ class RKNNDetector(_TensorRTBaseDetector):
                 self.rknn.release()
             except Exception:  # noqa: BLE001
                 pass
+
+
+class ResNetOpenVINODetector(BaseDetector):
+    """
+    ResNet classification model using OpenVINO backend.
+
+    Supports ImageNet and custom ResNet models for image classification.
+    Unlike YOLO detectors, this returns detections with full-frame bounding boxes
+    and class predictions.
+    """
+
+    def __init__(self, config: DetectorConfig):
+        super().__init__(config)
+        try:
+            from openvino.runtime import Core  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(
+                "OpenVINO backend selected but 'openvino' package is not installed. "
+                "Install with `pip install openvino`."
+            ) from exc
+
+        self.ov_core = Core()
+
+        device_map = {
+            "cpu": "CPU",
+            "gpu": "GPU",
+            "cuda": "GPU",
+            "auto": "AUTO",
+            "npu": "NPU",
+        }
+        ov_device = device_map.get(str(config.device).lower(), "CPU")
+
+        LOGGER.info(
+            "Loading ResNet OpenVINO model '%s' on device '%s'",
+            config.model_path,
+            ov_device,
+        )
+
+        model = self.ov_core.read_model(model=config.model_path)
+
+        # Compile with CPU optimization
+        compile_config = {}
+        if ov_device == "CPU":
+            compile_config["PERFORMANCE_HINT"] = "LATENCY"
+            compile_config["CPU_THREADS_NUM"] = "0"
+        elif ov_device in ("GPU", "AUTO"):
+            compile_config["PERFORMANCE_HINT"] = "THROUGHPUT"
+
+        self.compiled_model = self.ov_core.compile_model(
+            model=model, device_name=ov_device, config=compile_config
+        )
+
+        self.input_layer = self.compiled_model.input(0)
+        self.output_layer = self.compiled_model.output(0)
+
+        # Get input shape
+        input_shape = self.input_layer.shape
+        if config.input_size:
+            self.input_hw = (int(config.input_size[0]), int(config.input_size[1]))
+        elif len(input_shape) == 4 and input_shape[2] > 0 and input_shape[3] > 0:
+            self.input_hw = (int(input_shape[2]), int(input_shape[3]))
+        else:
+            # Default ResNet input size
+            self.input_hw = (224, 224)
+
+        self.infer_request = self.compiled_model.create_infer_request()
+
+        # Warmup
+        if config.warmup:
+            LOGGER.debug("Running ResNet OpenVINO warmup")
+            dummy = np.zeros((1, 3, *self.input_hw), dtype=np.float32)
+            self.infer_request.infer({0: dummy})
+
+        LOGGER.info("ResNet OpenVINO detector initialized")
+
+    def predict(self, packet: FramePacket) -> List[Detection]:
+        """
+        Run ResNet classification on the frame.
+
+        Returns top-K predictions as Detection objects with full-frame bounding boxes.
+        """
+        tensor = self._preprocess(packet.frame)
+        output = self.infer_request.infer({0: tensor})[self.output_layer]
+
+        # Get top-K predictions
+        if output.ndim > 1:
+            output = output.flatten()
+
+        top_k_indices = np.argsort(output)[-self.config.resnet_top_k:][::-1]
+        top_k_probs = output[top_k_indices]
+
+        # Create detections for top-K predictions
+        # Use full frame as bounding box since this is classification
+        h, w = packet.frame.shape[:2]
+        detections: List[Detection] = []
+
+        for i, (class_id, confidence) in enumerate(zip(top_k_indices, top_k_probs)):
+            if confidence >= self.config.conf_threshold:
+                detections.append(
+                    Detection(
+                        stream_name=packet.stream.name,
+                        frame_id=packet.frame_id,
+                        class_id=int(class_id),
+                        confidence=float(confidence),
+                        bbox_xyxy=(0.0, 0.0, float(w), float(h)),
+                    )
+                )
+
+        return detections
+
+    def _preprocess(self, frame) -> np.ndarray:
+        """Preprocess frame for ResNet classification."""
+        import cv2
+
+        # Resize to input size
+        resized = cv2.resize(frame, (self.input_hw[1], self.input_hw[0]))
+
+        # Convert BGR to RGB
+        image = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+
+        # Normalize (ImageNet mean and std)
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+        image = image.astype(np.float32) / 255.0
+        image = (image - mean) / std
+
+        # Transpose to NCHW format
+        tensor = np.transpose(image, (2, 0, 1))
+        tensor = np.expand_dims(tensor, axis=0)
+
+        return np.ascontiguousarray(tensor)
+
+
+class ResNetONNXDetector(BaseDetector):
+    """
+    ResNet classification model using ONNX Runtime backend.
+
+    Similar to ResNetOpenVINODetector but uses ONNX Runtime for inference.
+    """
+
+    def __init__(self, config: DetectorConfig):
+        super().__init__(config)
+        try:
+            import onnxruntime as ort  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(
+                "ONNX Runtime backend selected but not installed. "
+                "Install with `pip install onnxruntime` or `pip install onnxruntime-gpu`."
+            ) from exc
+
+        self.ort = ort
+
+        # Setup providers
+        providers = []
+        provider_options = []
+
+        if config.device == "cuda" or (isinstance(config.device, str) and config.device.startswith("cuda")):
+            if "CUDAExecutionProvider" in ort.get_available_providers():
+                cuda_options = {
+                    "device_id": 0,
+                    "arena_extend_strategy": "kNextPowerOfTwo",
+                    "gpu_mem_limit": 2 * 1024 * 1024 * 1024,
+                    "cudnn_conv_algo_search": "EXHAUSTIVE",
+                    "do_copy_in_default_stream": True,
+                }
+                providers.append("CUDAExecutionProvider")
+                provider_options.append(cuda_options)
+            else:
+                providers.append("CPUExecutionProvider")
+                provider_options.append({})
+        else:
+            providers.append("CPUExecutionProvider")
+            provider_options.append({})
+
+        LOGGER.info(
+            "Loading ResNet ONNX model '%s' with providers: %s",
+            config.model_path,
+            providers,
+        )
+
+        session_options = ort.SessionOptions()
+        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        session_options.enable_mem_pattern = True
+        session_options.enable_cpu_mem_arena = True
+
+        self.session = ort.InferenceSession(
+            config.model_path,
+            sess_options=session_options,
+            providers=providers,
+            provider_options=provider_options,
+        )
+
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+
+        # Get input shape
+        input_shape = self.session.get_inputs()[0].shape
+        if config.input_size:
+            self.input_hw = (int(config.input_size[0]), int(config.input_size[1]))
+        elif len(input_shape) == 4 and input_shape[2] > 0 and input_shape[3] > 0:
+            self.input_hw = (int(input_shape[2]), int(input_shape[3]))
+        else:
+            self.input_hw = (224, 224)
+
+        # Warmup
+        if config.warmup:
+            LOGGER.debug("Running ResNet ONNX warmup")
+            dummy = np.zeros((1, 3, *self.input_hw), dtype=np.float32)
+            self.session.run([self.output_name], {self.input_name: dummy})
+
+        LOGGER.info("ResNet ONNX detector initialized")
+
+    def predict(self, packet: FramePacket) -> List[Detection]:
+        """Run ResNet classification on the frame."""
+        tensor = self._preprocess(packet.frame)
+        output = self.session.run([self.output_name], {self.input_name: tensor})[0]
+
+        # Get top-K predictions
+        if output.ndim > 1:
+            output = output.flatten()
+
+        top_k_indices = np.argsort(output)[-self.config.resnet_top_k:][::-1]
+        top_k_probs = output[top_k_indices]
+
+        # Create detections
+        h, w = packet.frame.shape[:2]
+        detections: List[Detection] = []
+
+        for class_id, confidence in zip(top_k_indices, top_k_probs):
+            if confidence >= self.config.conf_threshold:
+                detections.append(
+                    Detection(
+                        stream_name=packet.stream.name,
+                        frame_id=packet.frame_id,
+                        class_id=int(class_id),
+                        confidence=float(confidence),
+                        bbox_xyxy=(0.0, 0.0, float(w), float(h)),
+                    )
+                )
+
+        return detections
+
+    def _preprocess(self, frame) -> np.ndarray:
+        """Preprocess frame for ResNet classification."""
+        import cv2
+
+        # Resize to input size
+        resized = cv2.resize(frame, (self.input_hw[1], self.input_hw[0]))
+
+        # Convert BGR to RGB
+        image = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+
+        # Normalize (ImageNet mean and std)
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+        image = image.astype(np.float32) / 255.0
+        image = (image - mean) / std
+
+        # Transpose to NCHW format
+        tensor = np.transpose(image, (2, 0, 1))
+        tensor = np.expand_dims(tensor, axis=0)
+
+        return np.ascontiguousarray(tensor)
