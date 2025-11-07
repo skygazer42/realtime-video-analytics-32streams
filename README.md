@@ -1,5 +1,7 @@
 # 🎥 Realtime Video Analytics - 32 Streams
 
+English | [简体中文](./README_CN.md)
+
 A production-ready, multi-stream (≤32) real-time video analytics pipeline with AI-powered object detection and tracking, featuring a modern web dashboard for monitoring and visualization.
 
 ## ✨ Key Features

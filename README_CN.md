@@ -1,10 +1,75 @@
-# realtime-video-analytics-32streams（中文指南）
+# 🎥 实时视频分析 - 32 路并发
 
-这是一个面向多路（最多 32 路）实时视频流的检测与跟踪平台，默认使用 Ultralytics YOLOv8 作为检测器，提供轻量级 IOU 跟踪器、Kafka 事件输出以及 Prometheus 指标上报能力。本文档将帮助你快速启动项目、准备模型文件、配置多流检测并运行整套流水线。
+[English](./README.md) | 简体中文
+
+一个面向生产环境的多路（最多 32 路）实时视频分析流水线，提供 AI 驱动的目标检测与跟踪功能，配备现代化 Web 控制台用于监控和可视化。
+
+## ✨ 核心特性
+
+### 🔧 核心流水线
+- **多路流处理**：支持最多 32 路并发的 RTSP/RTMP 视频流
+- **RTSP/RTMP 接入**：基于 OpenCV 的异步捕获，支持自动重连
+- **H.265/HEVC 支持**：通过 FFmpeg 后端完整支持 H.265 视频编解码
+- **AI 检测**：多种推理后端（Ultralytics、ONNX Runtime 1.23.0+、OpenVINO、TensorRT、RKNN）
+- **多模型类型支持**：YOLOv8、YOLOv5 和 ResNet 分类模型
+- **目标跟踪**：轻量级 IOU 跟踪器（兼容 ByteTrack/DeepSORT）
+- **事件流**：Kafka 输出，支持自适应质量和帧率限制
+- **智能调度**：基于优先级的流管理与健康监控
+- **可观测性**：Prometheus 指标导出，支持 Grafana 仪表板
+- **灵活配置**：基于 YAML 的配置，支持每路流自定义
+
+### 📊 现代化 Web 控制台
+- **实时监控**：WebSocket 实时更新，即时显示流状态
+- **交互式界面**：现代化响应式设计，深色主题
+- **统计面板**：实时指标（活跃流数、跟踪数、检测率、运行时长）
+- **流管理**：按名称或活跃状态搜索和过滤流
+- **视觉反馈**：实时带边界框的帧预览
+- **跟踪详情**：完整的跟踪信息，包含置信度和坐标
+- **性能指标**：FPS 监控和流健康指标
+
+### 🚀 高级功能
+- **帧模拟**：内置 FFmpeg 模拟器，无需真实摄像头即可测试
+- **ROI 过滤**：基于多边形的感兴趣区域遮罩
+- **运动检测**：基于场景活跃度的自适应 FPS
+- **帧优化**：可配置的降采样以提升资源效率
+- **每路流配置**：不同摄像头可使用不同模型、FPS 目标和 ROI
+
+> ⚠️ 本仓库提供的是可端到端运行的 Python 参考实现。
+> TensorRT / DeepStream 优化可通过替换检测器/跟踪器模块进行分层叠加。
+
+## 🆕 最新功能
+
+### 多模型支持
+- **YOLOv5**：全面支持 TensorRT、ONNX Runtime、OpenVINO 和 RKNN 后端
+- **ResNet 分类**：支持 OpenVINO 和 ONNX Runtime 的 ImageNet 分类模型
+- **灵活配置**：通过 `model_type` 参数轻松切换模型架构
+
+### H.265/HEVC 视频支持
+- 通过 OpenCV FFmpeg 后端自动支持 H.265/HEVC 编解码
+- 硬件解码加速（CUDA、VAAPI、QSV）
+- 自动编解码检测和日志记录
+- 无需配置更改，透明操作
+
+### 增强的调度系统
+- **StreamScheduler**：全局资源协调和负载监控
+- **StreamHealth**：每路流健康跟踪和性能指标
+- **优先级管理**：基于健康评分的智能流优先级
+- **自适应 FPS**：系统负载高时自动降低低优先级流的帧率
+
+### 视频质量优化
+- **自适应质量**：基于检测数量动态调整帧质量
+  - 0 个检测：基础质量 - 10
+  - 1-3 个检测：基础质量
+  - 4-10 个检测：基础质量 + 5
+  - 10+ 个检测：基础质量 + 10
+- **帧率限制**：每路流最多 10 FPS 发送至 Kafka，减少带宽
+- **渐进式 JPEG**：更好的流式传输性能
+- **WebP 支持**：高质量帧使用 WebP 格式（质量 ≥ 80 时）
+- **自动降尺寸**：超过 1920x1080 的大帧自动缩放
 
 > ⚠️ 当前仓库提供的是参考级的纯 Python 实现，方便本地开发与验证。若要接入 TensorRT / DeepStream，可在后续替换 `detector.py`、`tracker.py` 中的实现。
 
-如需了解不同推理后端（Ultralytics、TensorRT）的接入方式，请参阅 `docs/model_integration_cn.md`。
+如需了解不同推理后端（Ultralytics、ONNX Runtime、OpenVINO、TensorRT、RKNN）的接入方式，请参阅 `docs/inference_backends.md`。
 
 ## 环境与依赖
 
@@ -108,25 +173,89 @@ kafka:
 
 若 Kafka 未启用，看板依然可以启动，但在收到检测事件前不会显示数据。
 
-## 模型文件如何放置？
+## 模型配置
 
-1. 默认配置使用 `yolov8n.pt`。你可以从 [Ultralytics](https://github.com/ultralytics/ultralytics) 下载所需模型（如 `yolov8s.pt`、`yolov8m.pt` 等）。  
-2. 将模型文件放入自定义目录，例如 `models/yolov8n.pt`。  
-3. 在配置文件 `detector.model_path` 中填入模型路径。支持：
+### 支持的模型类型
+
+流水线现在支持多种模型架构，通过 `model_type` 参数配置：
+
+#### YOLOv8（默认）
+```yaml
+detector:
+  backend: onnx
+  model_type: yolov8
+  model_path: models/yolov8n.onnx
+  device: cuda
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+#### YOLOv5
+```yaml
+detector:
+  backend: tensorrt  # 或 onnx、openvino
+  model_type: yolov5
+  model_path: models/yolov5s.engine
+  device: cuda
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+**与 YOLOv8 的主要区别：**
+- YOLOv5 输出包含显式的 objectness 分数
+- 不同的输出张量格式：`[x, y, w, h, objectness, class_probs...]`
+
+#### ResNet 分类模型
+```yaml
+detector:
+  backend: openvino  # 或 onnx
+  model_type: resnet
+  model_path: models/resnet50.xml
+  device: cpu
+  conf_threshold: 0.5
+  resnet_num_classes: 1000  # 类别数量（如 ImageNet）
+  resnet_top_k: 5  # 返回 top-K 预测结果
+```
+
+**分类模型专用选项：**
+- `resnet_num_classes`：总类别数（ImageNet 默认为 1000）
+- `resnet_top_k`：返回的 top 预测数量（默认为 5）
+
+**注意**：ResNet 返回全帧边界框的检测结果，因为它是分类而非检测任务。
+
+### 模型文件放置
+
+1. 从 [Ultralytics](https://github.com/ultralytics/ultralytics) 下载所需模型（如 `yolov8n.pt`、`yolov5s.pt` 等）
+2. 将模型文件放入自定义目录，例如 `models/yolov8n.pt`
+3. 在配置文件中设置 `detector.model_path`，支持：
    - 绝对路径：`/opt/models/yolov8n.pt`
    - 相对路径：相对于运行命令时的当前工作目录，例如 `models/yolov8n.pt`
-4. 如果你已经转换为 TensorRT Engine（例如 `.engine`），可以在 `detector` 段落里指向该文件，并在 `detector.py` 中扩展对应装载逻辑。
+4. 对于优化后的模型格式（TensorRT `.engine`、OpenVINO `.xml`、ONNX `.onnx`），在配置中指定相应的后端和路径
 
-示例：
+### TensorRT 示例
 
 ```yaml
 detector:
   backend: tensorrt
-  model_path: models/yolov8s_fp16.engine
+  model_type: yolov5  # 或 yolov8
+  model_path: models/yolov5s_fp16.engine
+  device: cuda
   input_size: [640, 640]
   conf_threshold: 0.5
   iou_threshold: 0.45
-  half: true             # 若引擎以 FP16 构建
+  half: true  # 若引擎以 FP16 构建
+```
+
+### OpenVINO 示例
+
+```yaml
+detector:
+  backend: openvino
+  model_type: yolov8  # 或 yolov5、resnet
+  model_path: models/yolov8n.xml  # 需要同时存在 .xml 和 .bin
+  device: auto  # 或 cpu、gpu、npu
+  conf_threshold: 0.5
+  iou_threshold: 0.45
 ```
 
 ## 多流检测如何配置？
