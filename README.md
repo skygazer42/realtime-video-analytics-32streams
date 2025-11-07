@@ -329,7 +329,7 @@ streams:
 
 📖 **Full Documentation**: See [docs/TEMPORAL_DETECTION.md](docs/TEMPORAL_DETECTION.md) for detailed guide on temporal models, model preparation, optimization strategies, and examples.
 
-📋 **Example Config**: See [config_temporal_example.yaml](config_temporal_example.yaml) for complete temporal detection configuration.
+📋 **Example Config**: See [sample-temporal-pipeline.yaml](sample-temporal-pipeline.yaml) for complete temporal detection configuration.
 
 ## Simulating cameras with ffmpeg
 
