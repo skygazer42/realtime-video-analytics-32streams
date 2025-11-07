@@ -3,66 +3,166 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Realtime Analytics Dashboard</title>
+    <title>Realtime Video Analytics Dashboard - 32 Streams</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <header>
-      <h1>Realtime Analytics Dashboard</h1>
-      <div id="status" class="status status--disconnected">Disconnected</div>
+      <div class="header-content">
+        <div class="header-left">
+          <h1>
+            <svg class="logo-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+              <line x1="7" y1="2" x2="7" y2="22"></line>
+              <line x1="17" y1="2" x2="17" y2="22"></line>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <line x1="2" y1="7" x2="7" y2="7"></line>
+              <line x1="2" y1="17" x2="7" y2="17"></line>
+              <line x1="17" y1="17" x2="22" y2="17"></line>
+              <line x1="17" y1="7" x2="22" y2="7"></line>
+            </svg>
+            Realtime Video Analytics
+          </h1>
+          <span class="subtitle">Multi-Stream Detection & Tracking</span>
+        </div>
+        <div class="header-right">
+          <div id="status" class="status status--disconnected">
+            <span class="status-dot"></span>
+            Disconnected
+          </div>
+        </div>
+      </div>
     </header>
+
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--streams">📹</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-total-streams">0</div>
+          <div class="stat-label">Active Streams</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--tracks">🎯</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-total-tracks">0</div>
+          <div class="stat-label">Total Tracks</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--detections">🔍</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-total-detections">0</div>
+          <div class="stat-label">Detections/sec</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--uptime">⏱️</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-uptime">00:00:00</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+      </div>
+    </div>
 
     <main>
       <section class="streams">
-        <table>
-          <thead>
-            <tr>
-              <th>Stream</th>
-              <th>Frame</th>
-              <th>Tracks</th>
-              <th>Updated</th>
-            </tr>
-          </thead>
-          <tbody id="streams-body">
-            <tr class="empty">
-              <td colspan="4">Waiting for detections...</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="section-header">
+          <h2>Video Streams</h2>
+          <div class="section-controls">
+            <input
+              type="text"
+              id="stream-search"
+              class="search-input"
+              placeholder="🔍 Search streams..."
+            />
+            <select id="stream-filter" class="filter-select">
+              <option value="all">All Streams</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Stream</th>
+                <th>Frame ID</th>
+                <th>Tracks</th>
+                <th>FPS</th>
+                <th>Status</th>
+                <th>Last Update</th>
+              </tr>
+            </thead>
+            <tbody id="streams-body">
+              <tr class="empty">
+                <td colspan="6">Waiting for detections...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section class="details">
-        <h2>Tracks</h2>
-        <!-- 带检测框的最新帧预览区域 -->
+        <div class="section-header">
+          <h2>Detection Details</h2>
+          <div class="selected-stream-info">
+            <span id="selected-stream-name">No stream selected</span>
+          </div>
+        </div>
+
+        <!-- Frame Preview -->
         <div class="preview" id="preview-container">
           <div class="preview__placeholder" id="preview-placeholder">
-            Select a stream to view the latest annotated frame.
+            Select a stream to view the latest annotated frame with bounding boxes.
           </div>
           <img id="stream-preview" alt="Stream preview" hidden />
+          <div class="preview-info" id="preview-info" hidden>
+            <span id="preview-resolution">—</span>
+            <span id="preview-timestamp">—</span>
+          </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Track ID</th>
-              <th>Class</th>
-              <th>Confidence</th>
-              <th>BBox (x1, y1, x2, y2)</th>
-            </tr>
-          </thead>
-          <tbody id="tracks-body">
-            <tr class="empty">
-              <td colspan="4">Select a stream to view track details</td>
-            </tr>
-          </tbody>
-        </table>
+
+        <!-- Track Details Table -->
+        <div class="tracks-container">
+          <div class="tracks-header">
+            <h3>Active Tracks</h3>
+            <span class="track-count" id="track-count">0 tracks</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Track ID</th>
+                  <th>Class</th>
+                  <th>Confidence</th>
+                  <th>BBox (x1, y1, x2, y2)</th>
+                  <th>Size</th>
+                </tr>
+              </thead>
+              <tbody id="tracks-body">
+                <tr class="empty">
+                  <td colspan="5">Select a stream to view track details</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
 
     <footer>
-      <p>
-        Streams update in realtime via WebSocket. Configure the pipeline to publish Kafka events to
-        view detections here.
-      </p>
+      <div class="footer-content">
+        <p>
+          <strong>Realtime Video Analytics</strong> - Multi-stream detection & tracking pipeline
+        </p>
+        <p class="footer-info">
+          Streams update in realtime via WebSocket.
+          Configure the pipeline with Kafka events enabled to view detections.
+        </p>
+      </div>
     </footer>
 
     <script src="/static/main.js"></script>

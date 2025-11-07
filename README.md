@@ -1,16 +1,36 @@
-# realtime-video-analytics-32streams
+# 🎥 Realtime Video Analytics - 32 Streams
 
-Multi-stream (≤32) real-time video analytics pipeline with the following building blocks:
+A production-ready, multi-stream (≤32) real-time video analytics pipeline with AI-powered object detection and tracking, featuring a modern web dashboard for monitoring and visualization.
 
-- RTSP/RTMP ingestion with asynchronous OpenCV capture.
-- Ultralytics YOLOv8 detector (TensorRT-friendly layout; pluggable).
-- Lightweight IOU tracker (ByteTrack/DeepSORT drop-in ready).
-- Kafka sink for publishing structured detection/tracking events.
-- Prometheus metrics exporter for Grafana dashboards.
-- Configurable via YAML, packaged as an installable Python package/CLI.
+## ✨ Key Features
 
-> ⚠️ This repository currently ships with a reference Python-only implementation that you can run end-to-end.
-> TensorRT / DeepStream optimisations can be layered on top by swapping the detector/tracker modules.
+### 🔧 Core Pipeline
+- **Multi-Stream Processing**: Handle up to 32 concurrent RTSP/RTMP video streams
+- **RTSP/RTMP Ingestion**: Asynchronous OpenCV capture with auto-reconnection
+- **AI Detection**: Ultralytics YOLOv8 detector (TensorRT-friendly, pluggable architecture)
+- **Object Tracking**: Lightweight IOU tracker (ByteTrack/DeepSORT compatible)
+- **Event Streaming**: Kafka sink for publishing structured detection/tracking events
+- **Observability**: Prometheus metrics exporter for Grafana dashboards
+- **Flexible Configuration**: YAML-based configuration with per-stream customization
+
+### 📊 Modern Web Dashboard
+- **Real-time Monitoring**: Live WebSocket updates for instant stream status
+- **Interactive UI**: Modern, responsive design with dark theme
+- **Statistics Panel**: Real-time metrics (active streams, tracks, detections/sec, uptime)
+- **Stream Management**: Search and filter streams by name or activity status
+- **Visual Feedback**: Live annotated frame preview with bounding boxes
+- **Track Details**: Comprehensive track information with confidence levels and coordinates
+- **Performance Metrics**: FPS monitoring and stream health indicators
+
+### 🚀 Advanced Capabilities
+- **Frame Simulation**: Built-in FFmpeg simulator for testing without real cameras
+- **ROI Filtering**: Polygon-based region of interest masking
+- **Motion Detection**: Adaptive FPS based on scene activity
+- **Frame Optimization**: Configurable downsampling for resource efficiency
+- **Per-Stream Config**: Different models, FPS targets, and ROIs per camera
+
+> ⚠️ This repository ships with a reference Python implementation that you can run end-to-end.
+> TensorRT / DeepStream optimizations can be layered on top by swapping the detector/tracker modules.
 
 ## Quick start (uv)
 
@@ -72,9 +92,11 @@ Environment overrides:
 
 > 若需在容器中使用 TensorRT 引擎，请确保宿主机具备 GPU 与匹配的 NVIDIA 驱动，并基于官方 TensorRT/CUDA 基础镜像构建，运行时添加 `--gpus all`。
 
-## Dashboard
+## 📊 Dashboard
 
-A lightweight FastAPI dashboard is available to visualize detection metadata (per-stream track counts). The server listens to the same Kafka topic that the pipeline publishes.
+A modern, feature-rich FastAPI dashboard provides real-time visualization and monitoring of all video streams. The dashboard connects via WebSocket to display live detection events and stream statistics.
+
+### 🚀 Quick Start
 
 ```bash
 # Install optional dashboard dependencies (uv)
@@ -87,21 +109,86 @@ uv run realtime-analytics-dashboard --config my-pipeline.yaml --port 8080
 open http://localhost:8080
 ```
 
+### 🎯 Dashboard Features
+
+#### Real-time Statistics Panel
+- **Active Streams**: Total number of streams currently processing
+- **Total Tracks**: Aggregate count of tracked objects across all streams
+- **Detections/sec**: Real-time detection throughput
+- **Uptime**: Dashboard connection uptime (HH:MM:SS)
+
+#### Stream Management
+- **Search**: Filter streams by name with instant search
+- **Status Filter**: Show all streams, active only, or idle only
+- **Stream Table**: View all streams with:
+  - Frame ID (current frame number)
+  - Track count (number of tracked objects)
+  - FPS (frames per second)
+  - Status indicator (Active/Idle)
+  - Last update timestamp
+
+#### Detection Visualization
+- **Frame Preview**: Live annotated frames with bounding boxes
+- **Frame Info**: Resolution and timestamp for each frame
+- **Track Details**: Detailed table showing:
+  - Track ID (unique identifier)
+  - Object class (detection type)
+  - Confidence score (color-coded: green >80%, yellow >60%, red <60%)
+  - Bounding box coordinates (x1, y1, x2, y2)
+  - Object size (width × height in pixels)
+
+### 🔌 API Endpoints
+
 The dashboard exposes:
 
-- `/` – realtime table of streams and active tracks (WebSocket updates)
-- `/api/snapshot` – JSON snapshot of the latest detections
-- `/ws` – WebSocket endpoint (for custom clients)
+- **`GET /`** – Interactive web dashboard with real-time updates
+- **`GET /api/snapshot`** – JSON snapshot of the latest detections from all streams
+- **`WebSocket /ws`** – WebSocket endpoint for real-time event streaming (custom clients)
 
-To visualize annotated frames, enable Kafka frame payloads in your pipeline config:
+### 🎨 Enabling Frame Visualization
+
+To view annotated frames with bounding boxes, enable Kafka frame payloads in your pipeline config:
 
 ```yaml
 kafka:
   enabled: true
-  include_frames: true
+  include_frames: true  # Enable frame encoding in Kafka events
 ```
 
-When Kafka is disabled, the dashboard still runs but no events are shown until detections are published.
+**Note**: When `include_frames: false` or Kafka is disabled, the dashboard shows stream metadata (frame IDs, track counts) but no visual previews.
+
+### 🌐 WebSocket Protocol
+
+The dashboard uses WebSocket for real-time updates:
+
+```javascript
+// Message types
+{
+  "type": "snapshot",
+  "payload": {
+    "streams": [...]  // Full state of all streams
+  }
+}
+
+{
+  "type": "event",
+  "payload": {
+    "stream": "camera-1",
+    "frame_id": 1234,
+    "tracks": [...],
+    "received_at": "2025-11-07T12:34:56Z",
+    "frame_jpeg": "data:image/jpeg;base64,..."  // Optional
+  }
+}
+```
+
+### 💡 Tips
+
+- Use the search bar to quickly locate specific streams in large deployments
+- Click any stream row to view its detailed track information
+- The dashboard automatically reconnects if the connection is lost
+- Filter by "Active Only" to focus on streams with current detections
+- Track confidence scores are color-coded for quick visual assessment
 
 ## Configuration reference
 
@@ -153,10 +240,138 @@ When the pipeline shuts down it terminates the ffmpeg subprocess automatically. 
 - `telemetry/metrics.py` – Prometheus counters/gauges for frames, detections, active tracks.
 - `scripts/run_pipeline.py` – CLI entrypoint, works directly from the repo or via package install.
 
-## Next steps / roadmap
+## 🏗️ Architecture Overview
 
-- Swap the reference detector with TensorRT/DeepStream bindings for lower latency.
-- Introduce rule-engine hooks to trigger alerts/actions based on detection metadata.
-- Provide Docker Compose for Kafka + Prometheus/Grafana observability stack.
-- Add unit/integration tests (mock RTSP sources, synthetic frames).
-- Harden stream reconnection/back-off strategies and implement health probes.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Video Sources (≤32 streams)                 │
+│              RTSP / RTMP / Local Files / FFmpeg Sim             │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Video Stream Manager                          │
+│         (Async OpenCV, Auto-reconnect, Frame Pacing)            │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Detection Pipeline                           │
+│        ┌──────────────┐      ┌──────────────┐                   │
+│        │   Detector   │──────▶   Tracker    │                   │
+│        │ (YOLO/TRT)   │      │  (IOU-based) │                   │
+│        └──────────────┘      └──────────────┘                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+   ┌─────────┐    ┌──────────┐    ┌──────────┐
+   │  Kafka  │    │Prometheus│    │Dashboard │
+   │  Sink   │    │ Metrics  │    │ (WebUI)  │
+   └─────────┘    └──────────┘    └──────────┘
+```
+
+## 🎯 Use Cases
+
+- **Security & Surveillance**: Monitor multiple security cameras with real-time person/vehicle detection
+- **Retail Analytics**: Track customer movement and behavior across store locations
+- **Traffic Management**: Monitor traffic flow, count vehicles, detect violations
+- **Industrial Monitoring**: Track objects on assembly lines, detect anomalies
+- **Smart City**: Integrate multiple camera feeds for urban monitoring
+- **Research & Development**: Test and benchmark detection/tracking algorithms
+
+## 🚀 Performance Tips
+
+1. **GPU Acceleration**: Use TensorRT for 2-5x faster inference
+2. **Frame Downsampling**: Reduce resolution for non-critical streams
+3. **Motion Detection**: Enable adaptive FPS to skip static frames
+4. **ROI Filtering**: Process only relevant regions of frames
+5. **Batch Processing**: Group frames for efficient GPU utilization
+6. **Stream Prioritization**: Assign different models/configs per stream importance
+
+## 🛠️ Technology Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Language | Python 3.10+ |
+| Framework | FastAPI, Uvicorn |
+| Computer Vision | OpenCV, Ultralytics |
+| Object Detection | YOLOv8, TensorRT |
+| Async I/O | asyncio, aiofiles |
+| Messaging | Kafka (aiokafka) |
+| Metrics | Prometheus |
+| Frontend | Vanilla JavaScript, WebSocket |
+| Container | Docker, Docker Compose |
+| Configuration | YAML |
+
+## 🔧 Troubleshooting
+
+### Dashboard shows no streams
+- Ensure Kafka is enabled in the pipeline config
+- Verify the dashboard is using the same Kafka settings
+- Check that the pipeline is running and publishing events
+
+### Streams not connecting
+- Verify RTSP/RTMP URLs are accessible
+- Check network connectivity and firewall rules
+- Review stream logs for connection errors
+- Ensure credentials are correct if authentication is required
+
+### Low FPS / High latency
+- Enable frame downsampling in stream config
+- Use TensorRT for faster inference
+- Reduce the number of concurrent streams
+- Check CPU/GPU utilization
+- Adjust target_fps per stream
+
+### Frames not showing in dashboard
+- Set `kafka.include_frames: true` in pipeline config
+- Ensure sufficient bandwidth for JPEG frame transmission
+- Check browser console for WebSocket errors
+
+## 📚 Additional Resources
+
+- **Ultralytics YOLOv8**: [https://docs.ultralytics.com/](https://docs.ultralytics.com/)
+- **TensorRT**: [https://developer.nvidia.com/tensorrt](https://developer.nvidia.com/tensorrt)
+- **FastAPI**: [https://fastapi.tiangolo.com/](https://fastapi.tiangolo.com/)
+- **Kafka**: [https://kafka.apache.org/](https://kafka.apache.org/)
+- **Prometheus**: [https://prometheus.io/](https://prometheus.io/)
+
+## 🗺️ Roadmap
+
+### Short-term
+- [x] Modern web dashboard with real-time updates
+- [x] Stream search and filtering
+- [x] Performance statistics and metrics
+- [ ] Export detection data (CSV, JSON)
+- [ ] Alert system for custom detection rules
+- [ ] User authentication and access control
+
+### Mid-term
+- [ ] TensorRT/DeepStream optimization guides
+- [ ] Rule-engine hooks for event-driven actions
+- [ ] Complete Docker Compose stack (Kafka + Prometheus + Grafana)
+- [ ] Unit and integration tests
+- [ ] Performance benchmarking suite
+- [ ] Multi-language support for dashboard
+
+### Long-term
+- [ ] Advanced analytics (heatmaps, path tracking)
+- [ ] Model management and versioning
+- [ ] Distributed processing across multiple nodes
+- [ ] Cloud deployment guides (AWS, GCP, Azure)
+- [ ] Video recording with detection highlights
+- [ ] Mobile app for monitoring
+
+## 📄 License
+
+This project is open source. Please check the LICENSE file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
+
+## 📧 Support
+
+For questions or support, please open an issue on the GitHub repository.
