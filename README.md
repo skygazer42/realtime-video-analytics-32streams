@@ -1,5 +1,7 @@
 # 🎥 Realtime Video Analytics - 32 Streams
 
+English | [简体中文](./README_CN.md)
+
 A production-ready, multi-stream (≤32) real-time video analytics pipeline with AI-powered object detection and tracking, featuring a modern web dashboard for monitoring and visualization.
 
 ## ✨ Key Features
@@ -7,9 +9,12 @@ A production-ready, multi-stream (≤32) real-time video analytics pipeline with
 ### 🔧 Core Pipeline
 - **Multi-Stream Processing**: Handle up to 32 concurrent RTSP/RTMP video streams
 - **RTSP/RTMP Ingestion**: Asynchronous OpenCV capture with auto-reconnection
-- **AI Detection**: Multiple inference backends (Ultralytics, ONNX Runtime, OpenVINO, TensorRT)
+- **H.265/HEVC Support**: Full support for H.265 video codec via FFmpeg backend
+- **AI Detection**: Multiple inference backends (Ultralytics, ONNX Runtime 1.23.0+, OpenVINO, TensorRT, RKNN)
+- **Multiple Model Types**: YOLOv8, YOLOv5, and ResNet classification support
 - **Object Tracking**: Lightweight IOU tracker (ByteTrack/DeepSORT compatible)
-- **Event Streaming**: Kafka sink for publishing structured detection/tracking events
+- **Event Streaming**: Kafka sink with adaptive quality and frame rate limiting
+- **Smart Scheduling**: Priority-based stream management with health monitoring
 - **Observability**: Prometheus metrics exporter for Grafana dashboards
 - **Flexible Configuration**: YAML-based configuration with per-stream customization
 
