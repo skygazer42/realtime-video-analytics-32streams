@@ -15,6 +15,35 @@ class ConfigError(RuntimeError):
     """Raised when the supplied configuration is invalid."""
 
 
+def validate_model_path(model_path: str) -> Path:
+    """
+    Validate and resolve model file path.
+
+    Args:
+        model_path: Path to model file (can be relative or absolute)
+
+    Returns:
+        Resolved absolute Path object
+
+    Raises:
+        ConfigError: If path is invalid, doesn't exist, or is not a file
+    """
+    if not model_path:
+        raise ConfigError("Model path must not be empty")
+
+    path = Path(model_path).resolve()
+
+    # Check if file exists
+    if not path.exists():
+        raise ConfigError(f"Model file does not exist: {path}")
+
+    # Check if it's actually a file (not a directory)
+    if not path.is_file():
+        raise ConfigError(f"Model path is not a file: {path}")
+
+    return path
+
+
 @dataclass(slots=True)
 class FFmpegSimulatorConfig:
     """Configuration for spawning an ffmpeg process to emulate a camera stream."""
@@ -63,6 +92,7 @@ class StreamConfig:
     warmup_seconds: float = 2.0
     reconnect_backoff: float = 5.0
     max_retries: Optional[int] = None
+    frame_read_timeout: float = 5.0  # Timeout for reading a single frame (seconds)
     detector_id: Optional[str] = None
     roi_polygons: Optional[List[List[Tuple[int, int]]]] = None  # list of polygons
     motion_filter: bool = False
@@ -150,8 +180,9 @@ class DetectorConfig:
     num_action_classes: int = 400  # Number of action classes (e.g., Kinetics-400)
 
     def validate(self) -> None:
-        if not self.model_path:
-            raise ConfigError("Detector model_path must not be empty")
+        # Validate model path exists and is accessible
+        validate_model_path(self.model_path)
+
         valid_backends = {"ultralytics", "tensorrt", "onnx", "onnxruntime", "openvino", "rknn", "rk3588"}
         if self.backend not in valid_backends:
             raise ConfigError(f"Detector backend must be one of {valid_backends}")

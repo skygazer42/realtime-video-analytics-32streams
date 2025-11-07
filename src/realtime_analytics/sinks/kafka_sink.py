@@ -215,17 +215,19 @@ class KafkaSink:
         if quality is None:
             quality = self._base_quality
 
-        image = frame.copy()  # 避免修改原始帧
-
         # Optional downscaling to reduce bandwidth
         # Downscale if frame is very large (> 1920x1080)
-        h, w = image.shape[:2]
+        h, w = frame.shape[:2]
         scale_factor = 1.0
         if w > 1920 or h > 1080:
+            # Resize directly (creates new array, no need for copy)
             scale_factor = min(1920 / w, 1080 / h)
             new_w = int(w * scale_factor)
             new_h = int(h * scale_factor)
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            image = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        else:
+            # Only copy if we need to draw on it (avoid modifying original frame)
+            image = frame.copy()
 
         # Draw detection boxes and labels
         for track in track_list:

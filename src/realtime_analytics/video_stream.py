@@ -170,7 +170,18 @@ class VideoStream:
                 await asyncio.sleep(self.config.reconnect_backoff)
                 continue
 
-            success, frame = await asyncio.to_thread(self._capture.read)
+            try:
+                success, frame = await asyncio.wait_for(
+                    asyncio.to_thread(self._capture.read),
+                    timeout=self.config.frame_read_timeout
+                )
+            except asyncio.TimeoutError:
+                LOGGER.warning(
+                    "Frame read timeout (%.1fs) for stream '%s'",
+                    self.config.frame_read_timeout,
+                    self.config.name,
+                )
+                success, frame = False, None
 
             if not success or frame is None:
                 retry_count += 1
