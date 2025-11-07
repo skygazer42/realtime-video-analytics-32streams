@@ -3,67 +3,353 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Realtime Analytics Dashboard</title>
+    <title>Realtime Video Analytics Dashboard - 32 Streams</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <header>
-      <h1>Realtime Analytics Dashboard</h1>
-      <div id="status" class="status status--disconnected">Disconnected</div>
+      <div class="header-content">
+        <div class="header-left">
+          <h1>
+            <svg class="logo-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+              <line x1="7" y1="2" x2="7" y2="22"></line>
+              <line x1="17" y1="2" x2="17" y2="22"></line>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <line x1="2" y1="7" x2="7" y2="7"></line>
+              <line x1="2" y1="17" x2="7" y2="17"></line>
+              <line x1="17" y1="17" x2="22" y2="17"></line>
+              <line x1="17" y1="7" x2="22" y2="7"></line>
+            </svg>
+            Realtime Video Analytics
+          </h1>
+          <span class="subtitle">Multi-Stream Detection & Tracking</span>
+        </div>
+        <div class="header-right">
+          <div class="header-controls">
+            <button id="theme-toggle" class="icon-btn" title="Toggle theme (T)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </button>
+            <button id="pause-toggle" class="icon-btn" title="Pause updates (Space)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+            </button>
+            <button id="export-btn" class="icon-btn" title="Export data (E)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </button>
+            <button id="help-btn" class="icon-btn" title="Keyboard shortcuts (?)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </button>
+          </div>
+          <div id="status" class="status status--disconnected">
+            <span class="status-dot"></span>
+            Disconnected
+          </div>
+        </div>
+      </div>
     </header>
+
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--streams">📹</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-total-streams">0</div>
+          <div class="stat-label">Active Streams</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--tracks">🎯</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-total-tracks">0</div>
+          <div class="stat-label">Total Tracks</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--detections">🔍</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-total-detections">0</div>
+          <div class="stat-label">Detections/sec</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--uptime">⏱️</div>
+        <div class="stat-content">
+          <div class="stat-value" id="stat-uptime">00:00:00</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+      </div>
+    </div>
 
     <main>
       <section class="streams">
-        <table>
-          <thead>
-            <tr>
-              <th>Stream</th>
-              <th>Frame</th>
-              <th>Tracks</th>
-              <th>Updated</th>
-            </tr>
-          </thead>
-          <tbody id="streams-body">
-            <tr class="empty">
-              <td colspan="4">Waiting for detections...</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="section-header">
+          <h2>Video Streams</h2>
+          <div class="section-controls">
+            <button id="view-toggle" class="icon-btn" title="Toggle view (V)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </button>
+            <input
+              type="text"
+              id="stream-search"
+              class="search-input"
+              placeholder="🔍 Search streams..."
+            />
+            <select id="stream-filter" class="filter-select">
+              <option value="all">All Streams</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-container" id="streams-table-view">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="stream">
+                  Stream
+                  <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="frame_id">
+                  Frame ID
+                  <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="tracks">
+                  Tracks
+                  <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="fps">
+                  FPS
+                  <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="status">
+                  Status
+                  <span class="sort-icon">⇅</span>
+                </th>
+                <th class="sortable" data-sort="updated">
+                  Last Update
+                  <span class="sort-icon">⇅</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="streams-body">
+              <tr class="empty">
+                <td colspan="6">Waiting for detections...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid-container" id="streams-grid-view" hidden>
+          <!-- Grid view will be populated by JavaScript -->
+        </div>
       </section>
 
       <section class="details">
-        <h2>Tracks</h2>
-        <!-- 带检测框的最新帧预览区域 -->
+        <div class="section-header">
+          <h2>Detection Details</h2>
+          <div class="selected-stream-info">
+            <span id="selected-stream-name">No stream selected</span>
+          </div>
+        </div>
+
+        <!-- Frame Preview -->
         <div class="preview" id="preview-container">
           <div class="preview__placeholder" id="preview-placeholder">
-            Select a stream to view the latest annotated frame.
+            Select a stream to view the latest annotated frame with bounding boxes.
           </div>
           <img id="stream-preview" alt="Stream preview" hidden />
+          <button id="fullscreen-btn" class="fullscreen-btn" title="Fullscreen (F)" hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
+          <div class="preview-info" id="preview-info" hidden>
+            <span id="preview-resolution">—</span>
+            <span id="preview-timestamp">—</span>
+          </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Track ID</th>
-              <th>Class</th>
-              <th>Confidence</th>
-              <th>BBox (x1, y1, x2, y2)</th>
-            </tr>
-          </thead>
-          <tbody id="tracks-body">
-            <tr class="empty">
-              <td colspan="4">Select a stream to view track details</td>
-            </tr>
-          </tbody>
-        </table>
+
+        <!-- Track Details Table -->
+        <div class="tracks-container">
+          <div class="tracks-header">
+            <h3>Active Tracks</h3>
+            <span class="track-count" id="track-count">0 tracks</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Track ID</th>
+                  <th>Class</th>
+                  <th>Confidence</th>
+                  <th>BBox (x1, y1, x2, y2)</th>
+                  <th>Size</th>
+                </tr>
+              </thead>
+              <tbody id="tracks-body">
+                <tr class="empty">
+                  <td colspan="5">Select a stream to view track details</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
 
     <footer>
-      <p>
-        Streams update in realtime via WebSocket. Configure the pipeline to publish Kafka events to
-        view detections here.
-      </p>
+      <div class="footer-content">
+        <p>
+          <strong>Realtime Video Analytics</strong> - Multi-stream detection & tracking pipeline
+        </p>
+        <p class="footer-info">
+          Streams update in realtime via WebSocket.
+          Configure the pipeline with Kafka events enabled to view detections.
+        </p>
+      </div>
     </footer>
+
+    <!-- Fullscreen Modal -->
+    <div id="fullscreen-modal" class="modal" hidden>
+      <div class="modal-content fullscreen-content">
+        <button id="close-fullscreen" class="close-btn">×</button>
+        <img id="fullscreen-img" alt="Fullscreen preview" />
+        <div class="fullscreen-info">
+          <span id="fullscreen-stream">—</span>
+          <span id="fullscreen-resolution">—</span>
+          <span id="fullscreen-timestamp">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Keyboard Shortcuts</h3>
+          <button id="close-help" class="close-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="shortcut-group">
+            <h4>Navigation</h4>
+            <div class="shortcut">
+              <kbd>↑</kbd> <kbd>↓</kbd>
+              <span>Navigate streams</span>
+            </div>
+            <div class="shortcut">
+              <kbd>Enter</kbd>
+              <span>Select stream</span>
+            </div>
+          </div>
+          <div class="shortcut-group">
+            <h4>Actions</h4>
+            <div class="shortcut">
+              <kbd>Space</kbd>
+              <span>Pause/Resume updates</span>
+            </div>
+            <div class="shortcut">
+              <kbd>E</kbd>
+              <span>Export data</span>
+            </div>
+            <div class="shortcut">
+              <kbd>F</kbd>
+              <span>Toggle fullscreen</span>
+            </div>
+            <div class="shortcut">
+              <kbd>V</kbd>
+              <span>Toggle view mode</span>
+            </div>
+            <div class="shortcut">
+              <kbd>T</kbd>
+              <span>Toggle theme</span>
+            </div>
+            <div class="shortcut">
+              <kbd>/</kbd>
+              <span>Focus search</span>
+            </div>
+          </div>
+          <div class="shortcut-group">
+            <h4>Help</h4>
+            <div class="shortcut">
+              <kbd>?</kbd>
+              <span>Show this help</span>
+            </div>
+            <div class="shortcut">
+              <kbd>Esc</kbd>
+              <span>Close modals</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal" hidden>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Export Data</h3>
+          <button id="close-export" class="close-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <p>Choose export format:</p>
+          <div class="export-options">
+            <button id="export-json" class="export-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              Export as JSON
+            </button>
+            <button id="export-csv" class="export-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              Export as CSV
+            </button>
+          </div>
+          <div class="export-info">
+            <p><strong>What's included:</strong></p>
+            <ul>
+              <li>All visible streams (after filtering)</li>
+              <li>Frame IDs and timestamps</li>
+              <li>Track details and confidence scores</li>
+              <li>Bounding box coordinates</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="/static/main.js"></script>
   </body>

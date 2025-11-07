@@ -1,33 +1,125 @@
-const statusEl = document.getElementById("status"); // 状态标签
-const streamsBody = document.getElementById("streams-body"); // 摄像头表格主体
-const tracksBody = document.getElementById("tracks-body"); // 轨迹表格主体
-const previewImg = document.getElementById("stream-preview"); // 预览图像元素
-const previewPlaceholder = document.getElementById("preview-placeholder"); // 预览占位符
+// ==================== DOM Elements ====================
+const statusEl = document.getElementById("status");
+const streamsBody = document.getElementById("streams-body");
+const tracksBody = document.getElementById("tracks-body");
+const previewImg = document.getElementById("stream-preview");
+const previewPlaceholder = document.getElementById("preview-placeholder");
+const previewInfo = document.getElementById("preview-info");
+const previewResolution = document.getElementById("preview-resolution");
+const previewTimestamp = document.getElementById("preview-timestamp");
+const selectedStreamName = document.getElementById("selected-stream-name");
+const trackCount = document.getElementById("track-count");
 
-let selectedStream = null; // 当前选中的流名称
-let latestEvents = {}; // 缓存每路流的最新事件
+// Statistics elements
+const statTotalStreams = document.getElementById("stat-total-streams");
+const statTotalTracks = document.getElementById("stat-total-tracks");
+const statTotalDetections = document.getElementById("stat-total-detections");
+const statUptime = document.getElementById("stat-uptime");
 
+// Search and filter elements
+const streamSearchInput = document.getElementById("stream-search");
+const streamFilterSelect = document.getElementById("stream-filter");
+
+// ==================== State ====================
+let selectedStream = null;
+let latestEvents = {};
+let startTime = Date.now();
+let totalDetectionsCount = 0;
+let lastDetectionTime = Date.now();
+let searchQuery = "";
+let filterMode = "all";
+let isPaused = false;
+let currentView = "table"; // "table" or "grid"
+let sortColumn = null;
+let sortDirection = "asc";
+let currentStreamIndex = 0;
+
+// ==================== Status Management ====================
 function setStatus(connected) {
   if (connected) {
-    statusEl.textContent = "Connected";
+    statusEl.innerHTML = '<span class="status-dot"></span>Connected';
     statusEl.classList.remove("status--disconnected");
     statusEl.classList.add("status--connected");
   } else {
-    statusEl.textContent = "Disconnected";
+    statusEl.innerHTML = '<span class="status-dot"></span>Disconnected';
     statusEl.classList.remove("status--connected");
     statusEl.classList.add("status--disconnected");
   }
 }
 
+// ==================== Statistics Update ====================
+function updateStatistics() {
+  const events = Object.values(latestEvents);
+  const totalStreams = events.length;
+  const totalTracks = events.reduce((sum, evt) => sum + evt.tracks.length, 0);
+
+  statTotalStreams.textContent = totalStreams;
+  statTotalTracks.textContent = totalTracks;
+
+  // Calculate detections per second (simplified)
+  const now = Date.now();
+  const timeDiff = (now - lastDetectionTime) / 1000;
+  if (timeDiff > 0) {
+    const detectionsPerSec = totalDetectionsCount > 0 ? (totalDetectionsCount / timeDiff).toFixed(1) : 0;
+    statTotalDetections.textContent = detectionsPerSec;
+  }
+}
+
+// ==================== Uptime Timer ====================
+function updateUptime() {
+  const now = Date.now();
+  const elapsed = Math.floor((now - startTime) / 1000);
+  const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+  const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+  const seconds = (elapsed % 60).toString().padStart(2, '0');
+  statUptime.textContent = `${hours}:${minutes}:${seconds}`;
+}
+
+// Update uptime every second
+setInterval(updateUptime, 1000);
+
+// ==================== Search and Filter ====================
+function applyFilters(events) {
+  return events.filter(event => {
+    // Apply search filter
+    const matchesSearch = !searchQuery ||
+      event.stream.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Apply status filter
+    const isActive = event.tracks.length > 0;
+    const matchesFilter =
+      filterMode === "all" ||
+      (filterMode === "active" && isActive) ||
+      (filterMode === "inactive" && !isActive);
+
+    return matchesSearch && matchesFilter;
+  });
+}
+
+streamSearchInput.addEventListener("input", (e) => {
+  searchQuery = e.target.value;
+  renderStreams();
+});
+
+streamFilterSelect.addEventListener("change", (e) => {
+  filterMode = e.target.value;
+  renderStreams();
+});
+
+// ==================== Render Streams Table ====================
 function renderStreams() {
   streamsBody.innerHTML = "";
-  const events = Object.values(latestEvents).sort(
-    (a, b) => new Date(b.received_at) - new Date(a.received_at), // 按最新时间排序
+  const allEvents = Object.values(latestEvents).sort(
+    (a, b) => new Date(b.received_at) - new Date(a.received_at)
   );
 
+  const events = applyFilters(allEvents);
+
   if (!events.length) {
-    streamsBody.innerHTML =
-      '<tr class="empty"><td colspan="4">Waiting for detections...</td></tr>'; // 无数据时展示提示
+    const message = searchQuery || filterMode !== "all"
+      ? "No streams match the current filters"
+      : "Waiting for detections...";
+    streamsBody.innerHTML = `<tr class="empty"><td colspan="6">${message}</td></tr>`;
     return;
   }
 
@@ -37,18 +129,32 @@ function renderStreams() {
       row.classList.add("active");
     }
     row.dataset.stream = event.stream;
+
+    // Calculate FPS (estimated based on frame updates)
+    const fps = event.fps || "—";
+
+    // Determine status
+    const isActive = event.tracks.length > 0;
+    const statusBadge = isActive
+      ? '<span style="color: #4ade80;">● Active</span>'
+      : '<span style="color: #94a3b8;">○ Idle</span>';
+
     row.innerHTML = `
-      <td>${event.stream}</td>
+      <td><strong>${event.stream}</strong></td>
       <td>${event.frame_id}</td>
-      <td>${event.tracks.length}</td>
+      <td><span style="color: ${event.tracks.length > 0 ? '#3b82f6' : '#94a3b8'}; font-weight: 600;">${event.tracks.length}</span></td>
+      <td>${fps}</td>
+      <td>${statusBadge}</td>
       <td>${new Date(event.received_at).toLocaleTimeString()}</td>
     `;
+
     row.addEventListener("click", () => {
       selectedStream = event.stream;
       renderStreams();
       renderTracks();
-      renderPreview(); // 点击行后刷新右侧信息
+      renderPreview();
     });
+
     streamsBody.appendChild(row);
   }
 
@@ -57,41 +163,70 @@ function renderStreams() {
     renderTracks();
     renderPreview();
   }
+
+  updateStatistics();
 }
 
+// ==================== Render Tracks Table ====================
 function renderTracks() {
   tracksBody.innerHTML = "";
   const event = latestEvents[selectedStream];
+
+  // Update selected stream name
+  if (selectedStream) {
+    selectedStreamName.textContent = selectedStream;
+  } else {
+    selectedStreamName.textContent = "No stream selected";
+  }
+
   if (!event) {
     tracksBody.innerHTML =
-      '<tr class="empty"><td colspan="4">Select a stream to view track details</td></tr>'; // 尚未选择流时的提示
+      '<tr class="empty"><td colspan="5">Select a stream to view track details</td></tr>';
+    trackCount.textContent = "0 tracks";
     return;
   }
 
-  if (!event.tracks.length) {
+  const tracksLength = event.tracks.length;
+  trackCount.textContent = `${tracksLength} track${tracksLength !== 1 ? 's' : ''}`;
+
+  if (!tracksLength) {
     tracksBody.innerHTML =
-      '<tr class="empty"><td colspan="4">No active tracks for this stream</td></tr>'; // 当前无轨迹
+      '<tr class="empty"><td colspan="5">No active tracks for this stream</td></tr>';
     return;
   }
 
   for (const track of event.tracks) {
     const row = document.createElement("tr");
+
+    // Calculate bounding box size
+    const bbox = track.bbox_xyxy;
+    const width = bbox[2] - bbox[0];
+    const height = bbox[3] - bbox[1];
+    const size = `${width.toFixed(0)}×${height.toFixed(0)}`;
+
+    // Format confidence as percentage with color
+    const confidence = (track.confidence * 100).toFixed(1);
+    const confidenceColor = confidence >= 80 ? '#4ade80' : confidence >= 60 ? '#fbbf24' : '#f87171';
+
     row.innerHTML = `
-      <td>${track.track_id}</td>
+      <td><strong>#${track.track_id}</strong></td>
       <td>${track.class_id}</td>
-      <td>${(track.confidence * 100).toFixed(1)}%</td>
-      <td>${track.bbox_xyxy.map((v) => v.toFixed(1)).join(", ")}</td>
+      <td><span style="color: ${confidenceColor}; font-weight: 600;">${confidence}%</span></td>
+      <td style="font-family: monospace; font-size: 0.85rem;">${bbox.map((v) => v.toFixed(1)).join(", ")}</td>
+      <td>${size}</td>
     `;
     tracksBody.appendChild(row);
   }
 }
 
+// ==================== Render Preview ====================
 function renderPreview() {
   const event = latestEvents[selectedStream];
   if (!event) {
     previewImg.hidden = true;
+    previewInfo.hidden = true;
     previewPlaceholder.hidden = false;
-    previewPlaceholder.textContent = "Select a stream to view the latest annotated frame."; // 默认提示
+    previewPlaceholder.textContent = "Select a stream to view the latest annotated frame with bounding boxes.";
     return;
   }
 
@@ -99,8 +234,18 @@ function renderPreview() {
     previewImg.src = event.frame_jpeg;
     previewImg.hidden = false;
     previewPlaceholder.hidden = true;
+    previewInfo.hidden = false;
+
+    // Update preview info
+    previewImg.onload = () => {
+      const imgWidth = previewImg.naturalWidth;
+      const imgHeight = previewImg.naturalHeight;
+      previewResolution.textContent = `${imgWidth}×${imgHeight}`;
+    };
+    previewTimestamp.textContent = new Date(event.received_at).toLocaleString();
   } else {
     previewImg.hidden = true;
+    previewInfo.hidden = true;
     previewPlaceholder.hidden = false;
     previewPlaceholder.textContent = "No frame with detections is available for this stream yet.";
   }
@@ -147,14 +292,20 @@ function connectWebsocket() {
     if (message.type === "snapshot") {
       latestEvents = {};
       for (const evt of message.payload.streams || []) {
-        latestEvents[evt.stream] = evt; // 更新全量快照
+        latestEvents[evt.stream] = evt;
       }
       renderStreams();
       renderTracks();
       renderPreview();
     } else if (message.type === "event") {
       const evt = message.payload;
-      latestEvents[evt.stream] = evt; // 单条增量事件
+      latestEvents[evt.stream] = evt;
+
+      // Update detection count for statistics
+      if (evt.tracks && evt.tracks.length > 0) {
+        totalDetectionsCount += evt.tracks.length;
+      }
+
       renderStreams();
       if (selectedStream === evt.stream) {
         renderTracks();
@@ -162,6 +313,553 @@ function connectWebsocket() {
       }
     }
   };
+}
+
+// ==================== Table Sorting ====================
+let sortedEvents = [];
+
+function sortEvents(events, column, direction) {
+  return [...events].sort((a, b) => {
+    let valA, valB;
+
+    switch (column) {
+      case 'stream':
+        valA = a.stream.toLowerCase();
+        valB = b.stream.toLowerCase();
+        break;
+      case 'frame_id':
+        valA = a.frame_id;
+        valB = b.frame_id;
+        break;
+      case 'tracks':
+        valA = a.tracks.length;
+        valB = b.tracks.length;
+        break;
+      case 'fps':
+        valA = a.fps || 0;
+        valB = b.fps || 0;
+        break;
+      case 'status':
+        valA = a.tracks.length > 0 ? 1 : 0;
+        valB = b.tracks.length > 0 ? 1 : 0;
+        break;
+      case 'updated':
+        valA = new Date(a.received_at);
+        valB = new Date(b.received_at);
+        break;
+      default:
+        return 0;
+    }
+
+    if (valA < valB) return direction === 'asc' ? -1 : 1;
+    if (valA > valB) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+// Add click handlers to sortable headers
+document.querySelectorAll('.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const column = th.dataset.sort;
+
+    if (sortColumn === column) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortColumn = column;
+      sortDirection = 'asc';
+    }
+
+    // Update UI
+    document.querySelectorAll('.sortable').forEach(header => {
+      header.classList.remove('sorted-asc', 'sorted-desc');
+    });
+    th.classList.add(`sorted-${sortDirection}`);
+
+    renderStreams();
+  });
+});
+
+// ==================== View Toggle ====================
+const viewToggleBtn = document.getElementById('view-toggle');
+const streamsTableView = document.getElementById('streams-table-view');
+const streamsGridView = document.getElementById('streams-grid-view');
+
+viewToggleBtn.addEventListener('click', () => {
+  currentView = currentView === 'table' ? 'grid' : 'table';
+  if (currentView === 'grid') {
+    streamsTableView.hidden = true;
+    streamsGridView.hidden = false;
+  } else {
+    streamsTableView.hidden = false;
+    streamsGridView.hidden = true;
+  }
+  renderStreams();
+});
+
+function renderGridView(events) {
+  streamsGridView.innerHTML = '';
+
+  if (!events.length) {
+    const message = searchQuery || filterMode !== "all"
+      ? "No streams match the current filters"
+      : "Waiting for detections...";
+    streamsGridView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">${message}</div>`;
+    return;
+  }
+
+  for (const event of events) {
+    const card = document.createElement('div');
+    card.className = 'stream-card';
+    if (selectedStream === event.stream) {
+      card.classList.add('active');
+    }
+
+    const isActive = event.tracks.length > 0;
+    const statusBadge = isActive
+      ? '<span style="color: #4ade80;">● Active</span>'
+      : '<span style="color: #94a3b8;">○ Idle</span>';
+
+    card.innerHTML = `
+      <div class="stream-card-header">
+        <div class="stream-card-title">${event.stream}</div>
+        <div class="stream-card-status">${statusBadge}</div>
+      </div>
+      <div class="stream-card-stats">
+        <div class="stream-card-stat">
+          <div class="stream-card-stat-label">Frame</div>
+          <div class="stream-card-stat-value">${event.frame_id}</div>
+        </div>
+        <div class="stream-card-stat">
+          <div class="stream-card-stat-label">Tracks</div>
+          <div class="stream-card-stat-value" style="color: ${event.tracks.length > 0 ? '#3b82f6' : '#94a3b8'};">${event.tracks.length}</div>
+        </div>
+        <div class="stream-card-stat">
+          <div class="stream-card-stat-label">FPS</div>
+          <div class="stream-card-stat-value">${event.fps || '—'}</div>
+        </div>
+        <div class="stream-card-stat">
+          <div class="stream-card-stat-label">Updated</div>
+          <div class="stream-card-stat-value" style="font-size: 0.9rem;">${new Date(event.received_at).toLocaleTimeString()}</div>
+        </div>
+      </div>
+    `;
+
+    card.addEventListener('click', () => {
+      selectedStream = event.stream;
+      renderStreams();
+      renderTracks();
+      renderPreview();
+    });
+
+    streamsGridView.appendChild(card);
+  }
+}
+
+// ==================== Pause/Resume ====================
+const pauseToggleBtn = document.getElementById('pause-toggle');
+
+pauseToggleBtn.addEventListener('click', togglePause);
+
+function togglePause() {
+  isPaused = !isPaused;
+
+  if (isPaused) {
+    pauseToggleBtn.classList.add('active');
+    pauseToggleBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+    `;
+    pauseToggleBtn.title = 'Resume updates (Space)';
+  } else {
+    pauseToggleBtn.classList.remove('active');
+    pauseToggleBtn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="6" y="4" width="4" height="16"></rect>
+        <rect x="14" y="4" width="4" height="16"></rect>
+      </svg>
+    `;
+    pauseToggleBtn.title = 'Pause updates (Space)';
+  }
+}
+
+// ==================== Theme Toggle ====================
+const themeToggleBtn = document.getElementById('theme-toggle');
+let currentTheme = localStorage.getItem('theme') || 'dark';
+
+// Apply saved theme
+if (currentTheme === 'light') {
+  document.body.classList.add('light-theme');
+}
+
+themeToggleBtn.addEventListener('click', toggleTheme);
+
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.body.classList.toggle('light-theme');
+  localStorage.setItem('theme', currentTheme);
+}
+
+// ==================== Fullscreen Preview ====================
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+const fullscreenModal = document.getElementById('fullscreen-modal');
+const fullscreenImg = document.getElementById('fullscreen-img');
+const closeFullscreen = document.getElementById('close-fullscreen');
+const fullscreenStreamEl = document.getElementById('fullscreen-stream');
+const fullscreenResolutionEl = document.getElementById('fullscreen-resolution');
+const fullscreenTimestampEl = document.getElementById('fullscreen-timestamp');
+
+fullscreenBtn.addEventListener('click', openFullscreen);
+closeFullscreen.addEventListener('click', closeFullscreenModal);
+fullscreenModal.addEventListener('click', (e) => {
+  if (e.target === fullscreenModal) {
+    closeFullscreenModal();
+  }
+});
+
+function openFullscreen() {
+  const event = latestEvents[selectedStream];
+  if (!event || !event.frame_jpeg) return;
+
+  fullscreenImg.src = event.frame_jpeg;
+  fullscreenStreamEl.textContent = event.stream;
+  fullscreenTimestampEl.textContent = new Date(event.received_at).toLocaleString();
+
+  fullscreenImg.onload = () => {
+    const imgWidth = fullscreenImg.naturalWidth;
+    const imgHeight = fullscreenImg.naturalHeight;
+    fullscreenResolutionEl.textContent = `${imgWidth}×${imgHeight}`;
+  };
+
+  fullscreenModal.hidden = false;
+}
+
+function closeFullscreenModal() {
+  fullscreenModal.hidden = true;
+}
+
+// ==================== Help Modal ====================
+const helpBtn = document.getElementById('help-btn');
+const helpModal = document.getElementById('help-modal');
+const closeHelp = document.getElementById('close-help');
+
+helpBtn.addEventListener('click', () => {
+  helpModal.hidden = false;
+});
+
+closeHelp.addEventListener('click', () => {
+  helpModal.hidden = true;
+});
+
+helpModal.addEventListener('click', (e) => {
+  if (e.target === helpModal) {
+    helpModal.hidden = true;
+  }
+});
+
+// ==================== Export Modal ====================
+const exportBtn = document.getElementById('export-btn');
+const exportModal = document.getElementById('export-modal');
+const closeExport = document.getElementById('close-export');
+const exportJsonBtn = document.getElementById('export-json');
+const exportCsvBtn = document.getElementById('export-csv');
+
+exportBtn.addEventListener('click', () => {
+  exportModal.hidden = false;
+});
+
+closeExport.addEventListener('click', () => {
+  exportModal.hidden = true;
+});
+
+exportModal.addEventListener('click', (e) => {
+  if (e.target === exportModal) {
+    exportModal.hidden = true;
+  }
+});
+
+exportJsonBtn.addEventListener('click', exportAsJSON);
+exportCsvBtn.addEventListener('click', exportAsCSV);
+
+function exportAsJSON() {
+  const allEvents = Object.values(latestEvents);
+  const filteredEvents = applyFilters(allEvents);
+
+  const exportData = {
+    exported_at: new Date().toISOString(),
+    stream_count: filteredEvents.length,
+    streams: filteredEvents.map(event => ({
+      stream: event.stream,
+      frame_id: event.frame_id,
+      timestamp: event.received_at,
+      fps: event.fps || null,
+      tracks: event.tracks.map(track => ({
+        track_id: track.track_id,
+        class_id: track.class_id,
+        confidence: track.confidence,
+        bbox_xyxy: track.bbox_xyxy
+      }))
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `video-analytics-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  exportModal.hidden = true;
+}
+
+function exportAsCSV() {
+  const allEvents = Object.values(latestEvents);
+  const filteredEvents = applyFilters(allEvents);
+
+  const rows = [['Stream', 'Frame ID', 'Timestamp', 'FPS', 'Track ID', 'Class', 'Confidence', 'BBox X1', 'BBox Y1', 'BBox X2', 'BBox Y2']];
+
+  filteredEvents.forEach(event => {
+    if (event.tracks.length === 0) {
+      rows.push([
+        event.stream,
+        event.frame_id,
+        event.received_at,
+        event.fps || '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        ''
+      ]);
+    } else {
+      event.tracks.forEach(track => {
+        rows.push([
+          event.stream,
+          event.frame_id,
+          event.received_at,
+          event.fps || '',
+          track.track_id,
+          track.class_id,
+          track.confidence,
+          track.bbox_xyxy[0],
+          track.bbox_xyxy[1],
+          track.bbox_xyxy[2],
+          track.bbox_xyxy[3]
+        ]);
+      });
+    }
+  });
+
+  const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `video-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  exportModal.hidden = true;
+}
+
+// ==================== Keyboard Shortcuts ====================
+document.addEventListener('keydown', (e) => {
+  // Ignore if typing in input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.key === 'Escape') {
+      e.target.blur();
+    }
+    return;
+  }
+
+  switch (e.key.toLowerCase()) {
+    case ' ':
+      e.preventDefault();
+      togglePause();
+      break;
+    case 'e':
+      exportModal.hidden = false;
+      break;
+    case 'f':
+      if (!fullscreenModal.hidden) {
+        closeFullscreenModal();
+      } else {
+        openFullscreen();
+      }
+      break;
+    case 'v':
+      viewToggleBtn.click();
+      break;
+    case 't':
+      toggleTheme();
+      break;
+    case '/':
+      e.preventDefault();
+      streamSearchInput.focus();
+      break;
+    case '?':
+      helpModal.hidden = !helpModal.hidden;
+      break;
+    case 'escape':
+      // Close all modals
+      helpModal.hidden = true;
+      exportModal.hidden = true;
+      closeFullscreenModal();
+      break;
+    case 'arrowup':
+    case 'arrowdown':
+      e.preventDefault();
+      navigateStreams(e.key === 'arrowup' ? -1 : 1);
+      break;
+    case 'enter':
+      e.preventDefault();
+      selectCurrentStream();
+      break;
+  }
+});
+
+function navigateStreams(direction) {
+  const allEvents = Object.values(latestEvents);
+  const filteredEvents = applyFilters(allEvents);
+
+  if (!filteredEvents.length) return;
+
+  currentStreamIndex += direction;
+  if (currentStreamIndex < 0) currentStreamIndex = filteredEvents.length - 1;
+  if (currentStreamIndex >= filteredEvents.length) currentStreamIndex = 0;
+
+  selectedStream = filteredEvents[currentStreamIndex].stream;
+  renderStreams();
+  renderTracks();
+  renderPreview();
+}
+
+function selectCurrentStream() {
+  const allEvents = Object.values(latestEvents);
+  const filteredEvents = applyFilters(allEvents);
+
+  if (filteredEvents.length > currentStreamIndex) {
+    selectedStream = filteredEvents[currentStreamIndex].stream;
+    renderStreams();
+    renderTracks();
+    renderPreview();
+  }
+}
+
+// ==================== Update Render Functions ====================
+// Override renderStreams to support sorting and grid view
+const originalRenderStreams = renderStreams;
+
+function renderStreams() {
+  if (isPaused) return; // Don't update if paused
+
+  streamsBody.innerHTML = "";
+  let allEvents = Object.values(latestEvents).sort(
+    (a, b) => new Date(b.received_at) - new Date(a.received_at)
+  );
+
+  // Apply sorting if active
+  if (sortColumn) {
+    allEvents = sortEvents(allEvents, sortColumn, sortDirection);
+  }
+
+  const events = applyFilters(allEvents);
+
+  if (currentView === 'grid') {
+    renderGridView(events);
+    updateStatistics();
+    return;
+  }
+
+  // Table view rendering
+  if (!events.length) {
+    const message = searchQuery || filterMode !== "all"
+      ? "No streams match the current filters"
+      : "Waiting for detections...";
+    streamsBody.innerHTML = `<tr class="empty"><td colspan="6">${message}</td></tr>`;
+    return;
+  }
+
+  for (const event of events) {
+    const row = document.createElement("tr");
+    if (selectedStream === event.stream) {
+      row.classList.add("active");
+    }
+    row.dataset.stream = event.stream;
+
+    const fps = event.fps || "—";
+    const isActive = event.tracks.length > 0;
+    const statusBadge = isActive
+      ? '<span style="color: #4ade80;">● Active</span>'
+      : '<span style="color: #94a3b8;">○ Idle</span>';
+
+    row.innerHTML = `
+      <td><strong>${event.stream}</strong></td>
+      <td>${event.frame_id}</td>
+      <td><span style="color: ${event.tracks.length > 0 ? '#3b82f6' : '#94a3b8'}; font-weight: 600;">${event.tracks.length}</span></td>
+      <td>${fps}</td>
+      <td>${statusBadge}</td>
+      <td>${new Date(event.received_at).toLocaleTimeString()}</td>
+    `;
+
+    row.addEventListener("click", () => {
+      selectedStream = event.stream;
+      currentStreamIndex = events.findIndex(e => e.stream === event.stream);
+      renderStreams();
+      renderTracks();
+      renderPreview();
+    });
+
+    streamsBody.appendChild(row);
+  }
+
+  if (!selectedStream && events.length) {
+    selectedStream = events[0].stream;
+    currentStreamIndex = 0;
+    renderTracks();
+    renderPreview();
+  }
+
+  updateStatistics();
+}
+
+// Update renderPreview to show/hide fullscreen button
+const originalRenderPreview = renderPreview;
+
+function renderPreview() {
+  const event = latestEvents[selectedStream];
+  if (!event) {
+    previewImg.hidden = true;
+    previewInfo.hidden = true;
+    fullscreenBtn.hidden = true;
+    previewPlaceholder.hidden = false;
+    previewPlaceholder.textContent = "Select a stream to view the latest annotated frame with bounding boxes.";
+    return;
+  }
+
+  if (event.frame_jpeg) {
+    previewImg.src = event.frame_jpeg;
+    previewImg.hidden = false;
+    previewPlaceholder.hidden = true;
+    previewInfo.hidden = false;
+    fullscreenBtn.hidden = false;
+
+    previewImg.onload = () => {
+      const imgWidth = previewImg.naturalWidth;
+      const imgHeight = previewImg.naturalHeight;
+      previewResolution.textContent = `${imgWidth}×${imgHeight}`;
+    };
+    previewTimestamp.textContent = new Date(event.received_at).toLocaleString();
+  } else {
+    previewImg.hidden = true;
+    previewInfo.hidden = true;
+    fullscreenBtn.hidden = true;
+    previewPlaceholder.hidden = false;
+    previewPlaceholder.textContent = "No frame with detections is available for this stream yet.";
+  }
 }
 
 setStatus(false); // 初始展示断开状态
