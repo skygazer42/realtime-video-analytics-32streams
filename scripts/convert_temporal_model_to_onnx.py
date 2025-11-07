@@ -3,14 +3,14 @@
 Script to convert temporal video analysis models from PyTorch to ONNX format.
 
 Supports:
-- CNN-LSTM models
-- 3D CNN models (C3D, I3D, ResNet3D)
-- ConvGRU models
-- SlowFast networks
+- cnnlstm: CNN-LSTM models
+- conv3d: 3D CNN models (C3D, I3D, ResNet3D)
+- convgru: ConvGRU models
+- slowfast: SlowFast networks
 
 Usage:
     python convert_temporal_model_to_onnx.py \
-        --model-type cnn_lstm \
+        --model-type cnnlstm \
         --checkpoint model.pth \
         --output model.onnx \
         --sequence-length 16 \
@@ -133,11 +133,11 @@ def create_model(model_type: str, num_classes: int, checkpoint_path: str | None 
     Returns:
         PyTorch model in eval mode
     """
-    if model_type == "cnn_lstm":
+    if model_type == "cnnlstm":
         model = DummyCNNLSTM(num_classes=num_classes)
-    elif model_type == "3d_cnn":
+    elif model_type == "conv3d":
         model = Dummy3DCNN(num_classes=num_classes)
-    elif model_type == "conv_gru":
+    elif model_type == "convgru":
         # Similar to CNN-LSTM but with GRU
         logger.info("ConvGRU model - using CNN-LSTM as template, replace with your GRU model")
         model = DummyCNNLSTM(num_classes=num_classes)
@@ -185,7 +185,7 @@ def export_to_onnx(
     height, width = input_size
 
     # Create dummy input based on model type
-    if model_type in ("cnn_lstm", "conv_gru"):
+    if model_type in ("cnnlstm", "convgru"):
         # Input: [batch, time, channels, height, width]
         dummy_input = torch.randn(1, sequence_length, 3, height, width)
         input_names = ["input"]
@@ -199,7 +199,7 @@ def export_to_onnx(
         else:
             dynamic_axes = None
 
-    elif model_type == "3d_cnn":
+    elif model_type == "conv3d":
         # Input: [batch, channels, time, height, width]
         dummy_input = torch.randn(1, 3, sequence_length, height, width)
         input_names = ["input"]
@@ -292,7 +292,7 @@ def main():
         "--model-type",
         type=str,
         required=True,
-        choices=["cnn_lstm", "3d_cnn", "conv_gru"],
+        choices=["cnnlstm", "conv3d", "convgru"],
         help="Model architecture type",
     )
     parser.add_argument(

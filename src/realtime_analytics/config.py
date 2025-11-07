@@ -112,30 +112,30 @@ class DetectorConfig:
     Supported model types:
     - yolov5: YOLOv5 object detection
     - yolov8: YOLOv8 object detection
-    - resnet: ResNet classification
-    - cnn_lstm: CNN-LSTM video sequence analysis
-    - 3d_cnn: 3D CNN video analysis
-    - conv_gru: Convolutional GRU video analysis
-    - slow_fast: SlowFast networks for action recognition
+    - resnet: ResNet image classification
+    - cnnlstm: CNN-LSTM video sequence analysis
+    - conv3d: 3D CNN spatiotemporal analysis (C3D, I3D, ResNet3D)
+    - convgru: Convolutional GRU video analysis
+    - slowfast: SlowFast networks for action recognition
 
     Supported backends:
     - ultralytics: Ultralytics YOLO (YOLOv5, YOLOv8)
     - tensorrt: NVIDIA TensorRT (YOLOv5, YOLOv8)
-    - onnx/onnxruntime: ONNX Runtime (YOLOv5, YOLOv8, ResNet, temporal models)
+    - onnxruntime: ONNX Runtime (YOLOv5, YOLOv8, ResNet, temporal models)
     - openvino: Intel OpenVINO (YOLOv5, YOLOv8, ResNet, temporal models)
-    - rknn: Rockchip RK3588 (YOLOv5, YOLOv8)
+    - rknn: Rockchip RK3588 NPU (YOLOv5, YOLOv8)
     """
 
     model_path: str = "yolov8n.pt"
     device: str = "auto"
     backend: str = "ultralytics"
-    model_type: str = "yolov8"  # yolov5 | yolov8 | resnet | cnn_lstm | 3d_cnn | conv_gru | slow_fast
+    model_type: str = "yolov8"  # yolov5 | yolov8 | resnet | cnnlstm | conv3d | convgru | slowfast
     conf_threshold: float = 0.5
     iou_threshold: float = 0.45
     classes: Optional[List[int]] = None
     half: bool = False
     warmup: bool = True
-    input_size: Optional[List[int]] = None  # H,W
+    input_size: Optional[List[int]] = None  # [H, W]
     tensorrt_max_workspace_size: int = 1 << 30  # 1 GiB
     tensorrt_use_fp16: bool = False
     resnet_num_classes: int = 1000  # For ResNet classification
@@ -155,7 +155,7 @@ class DetectorConfig:
         valid_backends = {"ultralytics", "tensorrt", "onnx", "onnxruntime", "openvino", "rknn", "rk3588"}
         if self.backend not in valid_backends:
             raise ConfigError(f"Detector backend must be one of {valid_backends}")
-        valid_model_types = {"yolov5", "yolov8", "resnet", "cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
+        valid_model_types = {"yolov5", "yolov8", "resnet", "cnnlstm", "conv3d", "convgru", "slowfast"}
         if self.model_type not in valid_model_types:
             raise ConfigError(f"Model type must be one of {valid_model_types}")
         if not (0.0 < self.conf_threshold <= 1.0):
@@ -175,10 +175,10 @@ class DetectorConfig:
                 raise ConfigError("resnet_top_k must be > 0")
 
         # Temporal model validation
-        temporal_models = {"cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
+        temporal_models = {"cnnlstm", "conv3d", "convgru", "slowfast"}
         if self.model_type in temporal_models:
             if self.backend not in {"onnx", "onnxruntime", "openvino"}:
-                raise ConfigError(f"Temporal models currently only supported with ONNX Runtime or OpenVINO backends")
+                raise ConfigError("Temporal models only supported with ONNX Runtime or OpenVINO backends")
             if self.sequence_length <= 0:
                 raise ConfigError("sequence_length must be > 0 for temporal models")
             if self.sequence_stride <= 0:

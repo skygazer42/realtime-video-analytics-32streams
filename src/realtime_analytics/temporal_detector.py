@@ -2,14 +2,14 @@
 Temporal video analysis detectors supporting sequence-based models.
 
 Supported temporal model types:
-- CNN-LSTM: Convolutional Neural Network + Long Short-Term Memory for action recognition
-- 3D CNN: 3D Convolutional Neural Network for spatiotemporal feature learning
-- ConvGRU: Convolutional Gated Recurrent Unit for video analysis
-- SlowFast: SlowFast networks for action recognition with dual pathways
+- cnnlstm: CNN-LSTM for action recognition (spatial + temporal modeling)
+- conv3d: 3D Convolutional Networks for spatiotemporal learning (C3D, I3D, ResNet3D)
+- convgru: Convolutional GRU for efficient video analysis
+- slowfast: SlowFast networks with dual-pathway architecture
 
 Supported backends:
-- ONNX Runtime: Cross-platform inference with GPU/CPU support
-- OpenVINO: Intel hardware optimization
+- onnxruntime: Cross-platform inference with GPU/CPU support
+- openvino: Intel hardware optimization (CPU, GPU, NPU)
 
 These detectors process sequences of video frames to recognize actions, events, or
 temporal patterns that cannot be detected from single frames alone.
@@ -147,7 +147,7 @@ class BaseTemporalDetector(abc.ABC):
         raise NotImplementedError
 
 
-class CNNLSTMDetector(BaseTemporalDetector):
+class CnnLstmDetector(BaseTemporalDetector):
     """
     CNN-LSTM detector for action recognition and video analysis.
 
@@ -426,17 +426,19 @@ class CNNLSTMDetector(BaseTemporalDetector):
         return detections
 
 
-class ThreeDCNNDetector(BaseTemporalDetector):
+class Conv3dDetector(BaseTemporalDetector):
     """
-    3D CNN detector for spatiotemporal video analysis.
+    3D Convolutional Network detector for spatiotemporal video analysis.
 
     Architecture:
     - 3D Convolutions: Process both spatial and temporal dimensions simultaneously
-    - Pooling: 3D max/avg pooling for feature reduction
+    - 3D Pooling: Max/avg pooling for spatiotemporal feature reduction
     - Fully Connected: Action classification
 
     Input format: [batch, channels, time, height, width] (NCTHW)
     Output format: [batch, num_classes] (action probabilities)
+
+    Supports: C3D, I3D, ResNet3D, and other 3D CNN architectures
     """
 
     def __init__(self, config: DetectorConfig):
@@ -641,7 +643,7 @@ class ThreeDCNNDetector(BaseTemporalDetector):
         return detections
 
 
-class ConvGRUDetector(BaseTemporalDetector):
+class ConvGruDetector(BaseTemporalDetector):
     """
     Convolutional GRU detector for efficient video analysis.
 

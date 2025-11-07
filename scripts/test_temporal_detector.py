@@ -255,7 +255,7 @@ def main():
         "--model-type",
         type=str,
         required=True,
-        choices=["cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"],
+        choices=["cnnlstm", "conv3d", "convgru", "slowfast"],
         help="Model type",
     )
     parser.add_argument(

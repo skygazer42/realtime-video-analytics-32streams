@@ -291,10 +291,10 @@ Everything is expressed in YAML (see `config/sample-pipeline.yaml`). Key section
 The system supports temporal models that analyze sequences of frames for action recognition and event detection:
 
 **Supported Temporal Models**:
-- **CNN-LSTM**: Combines CNN spatial features with LSTM temporal modeling
-- **3D CNN**: 3D convolutions for spatiotemporal feature learning (C3D, I3D, ResNet3D)
-- **ConvGRU**: Efficient convolutional GRU for video analysis
-- **SlowFast**: Dual-pathway networks for action recognition
+- **cnnlstm**: CNN-LSTM combining spatial and temporal modeling
+- **conv3d**: 3D Convolutional Networks (C3D, I3D, ResNet3D)
+- **convgru**: Efficient Convolutional GRU for video analysis
+- **slowfast**: Dual-pathway SlowFast networks
 
 **Use Cases**: Security (person falling, fighting), traffic (accidents, violations), behavior analysis
 
@@ -302,7 +302,7 @@ The system supports temporal models that analyze sequences of frames for action 
 ```yaml
 detectors:
   action_detector:
-    model_type: "cnn_lstm"  # or "3d_cnn", "conv_gru", "slow_fast"
+    model_type: "cnnlstm"  # or "conv3d", "convgru", "slowfast"
     backend: "onnxruntime"  # or "openvino"
     model_path: "/models/action_recognition.onnx"
     device: "cuda"

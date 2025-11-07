@@ -1,5 +1,5 @@
 # Example configuration for temporal video analysis models
-# Supports CNN-LSTM, 3D CNN, ConvGRU, and SlowFast networks
+# Supports cnnlstm, conv3d, convgru, and slowfast networks
 
 # Stream configuration
 streams:
@@ -9,22 +9,22 @@ streams:
     enabled: true
     target_fps: 15  # Lower FPS for temporal models (reduce computational load)
     batch_size: 1
-    detector_id: "temporal_cnn_lstm"
+    detector_id: "temporal_cnnlstm"
 
-  # Example stream with 3D CNN
+  # Example stream with Conv3D
   - name: "video_analysis_stream"
     url: "rtsp://localhost:8554/stream2"
     enabled: true
     target_fps: 10
-    detector_id: "temporal_3d_cnn"
+    detector_id: "temporal_conv3d"
 
 # Detector configurations
 detectors:
   # CNN-LSTM detector for action recognition
-  temporal_cnn_lstm:
-    model_type: "cnn_lstm"
+  temporal_cnnlstm:
+    model_type: "cnnlstm"
     backend: "onnxruntime"
-    model_path: "/models/cnn_lstm_kinetics400.onnx"
+    model_path: "/models/cnnlstm_kinetics400.onnx"
     device: "cuda"  # or "cpu"
     conf_threshold: 0.3
     half: false
@@ -47,9 +47,9 @@ detectors:
     # Input size (H, W)
     input_size: [224, 224]
 
-  # 3D CNN detector for spatiotemporal analysis
-  temporal_3d_cnn:
-    model_type: "3d_cnn"
+  # Conv3D detector for spatiotemporal analysis
+  temporal_conv3d:
+    model_type: "conv3d"
     backend: "onnxruntime"
     model_path: "/models/resnet3d_kinetics.onnx"
     device: "cuda"
@@ -63,11 +63,11 @@ detectors:
     temporal_overlap: 0.25
     temporal_pooling: "max"
     num_action_classes: 400
-    input_size: [112, 112]  # 3D CNNs often use smaller spatial resolution
+    input_size: [112, 112]  # Conv3D often uses smaller spatial resolution
 
   # ConvGRU detector (efficient alternative to LSTM)
-  temporal_conv_gru:
-    model_type: "conv_gru"
+  temporal_convgru:
+    model_type: "convgru"
     backend: "openvino"  # OpenVINO for Intel hardware
     model_path: "/models/convgru_ucf101.xml"
     device: "cpu"
@@ -82,7 +82,7 @@ detectors:
 
   # SlowFast network for action recognition
   temporal_slowfast:
-    model_type: "slow_fast"
+    model_type: "slowfast"
     backend: "onnxruntime"
     model_path: "/models/slowfast_kinetics.onnx"
     device: "cuda"

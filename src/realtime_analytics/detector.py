@@ -56,22 +56,22 @@ def create_detector(config: DetectorConfig) -> BaseDetector:
     backend = config.backend.lower()
     model_type = config.model_type.lower()
 
-    # Temporal models (CNN-LSTM, 3D CNN, ConvGRU, SlowFast)
-    temporal_models = {"cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
+    # Temporal models (CNN-LSTM, Conv3D, ConvGRU, SlowFast)
+    temporal_models = {"cnnlstm", "conv3d", "convgru", "slowfast"}
     if model_type in temporal_models:
-        from .temporal_detector import CNNLSTMDetector, ThreeDCNNDetector, ConvGRUDetector
+        from .temporal_detector import CnnLstmDetector, Conv3dDetector, ConvGruDetector
 
-        if model_type == "cnn_lstm":
-            return CNNLSTMDetector(config)
-        if model_type == "3d_cnn":
-            return ThreeDCNNDetector(config)
-        if model_type == "conv_gru":
-            return ConvGRUDetector(config)
-        if model_type == "slow_fast":
-            # SlowFast can use similar architecture to 3D CNN
-            # For now, use ThreeDCNNDetector (can be specialized later)
-            LOGGER.info("Using 3D CNN detector for SlowFast model")
-            return ThreeDCNNDetector(config)
+        if model_type == "cnnlstm":
+            return CnnLstmDetector(config)
+        if model_type == "conv3d":
+            return Conv3dDetector(config)
+        if model_type == "convgru":
+            return ConvGruDetector(config)
+        if model_type == "slowfast":
+            # SlowFast uses similar architecture to Conv3D
+            # For now, use Conv3dDetector (can be specialized later)
+            LOGGER.info("Using Conv3D detector for SlowFast model")
+            return Conv3dDetector(config)
         raise ValueError(f"Temporal model type '{model_type}' not implemented")
 
     # ResNet classification models
