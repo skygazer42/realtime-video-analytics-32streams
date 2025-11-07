@@ -46,6 +46,10 @@ def create_detector(config: DetectorConfig) -> BaseDetector:
         return UltralyticsDetector(config)
     if backend == "tensorrt":
         return TensorRTDetector(config)
+    if backend == "onnx" or backend == "onnxruntime":
+        return ONNXRuntimeDetector(config)
+    if backend == "openvino":
+        return OpenVINODetector(config)
     raise ValueError(f"Unsupported detector backend '{config.backend}'")
 
 
@@ -380,3 +384,141 @@ def _iou(box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
     boxes_area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
     union = box_area + boxes_area - inter_area
     return inter_area / np.clip(union, a_min=1e-6, a_max=None)
+
+
+class ONNXRuntimeDetector(_TensorRTBaseDetector):
+    """ONNX Runtime backend with GPU/CPU support (expects YOLO-style outputs)."""
+
+    def __init__(self, config: DetectorConfig):
+        try:
+            import onnxruntime as ort  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(
+                "ONNX Runtime backend selected but 'onnxruntime' or 'onnxruntime-gpu' package is not installed. "
+                "Install with `pip install onnxruntime` (CPU) or `pip install onnxruntime-gpu` (GPU)."
+            ) from exc
+
+        self.ort = ort
+
+        # Determine providers (execution providers)
+        providers = []
+        if config.device == "cuda" or (isinstance(config.device, str) and config.device.startswith("cuda")):
+            if "CUDAExecutionProvider" in ort.get_available_providers():
+                providers.append("CUDAExecutionProvider")
+                LOGGER.info("Using CUDA Execution Provider for ONNX Runtime")
+            else:
+                LOGGER.warning("CUDA requested but CUDAExecutionProvider not available, falling back to CPU")
+                providers.append("CPUExecutionProvider")
+        else:
+            providers.append("CPUExecutionProvider")
+            LOGGER.info("Using CPU Execution Provider for ONNX Runtime")
+
+        # Load ONNX model
+        LOGGER.info(
+            "Loading ONNX model '%s' with providers: %s",
+            config.model_path,
+            providers,
+        )
+
+        session_options = ort.SessionOptions()
+        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+        self.session = ort.InferenceSession(
+            config.model_path,
+            sess_options=session_options,
+            providers=providers,
+        )
+
+        # Get model input/output info
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+
+        # Determine input shape
+        input_shape = self.session.get_inputs()[0].shape
+        if config.input_size:
+            input_hw = (int(config.input_size[0]), int(config.input_size[1]))
+        elif len(input_shape) == 4 and input_shape[2] > 0 and input_shape[3] > 0:
+            input_hw = (int(input_shape[2]), int(input_shape[3]))
+        else:
+            LOGGER.warning("Could not determine input size from ONNX model, defaulting to 640x640")
+            input_hw = (640, 640)
+
+        super().__init__(config, input_hw)
+
+        # Warmup
+        if config.warmup:
+            LOGGER.debug("Running ONNX detector warmup")
+            dummy = np.zeros((1, 3, *self.input_hw), dtype=np.float32)
+            self.session.run([self.output_name], {self.input_name: dummy})
+
+    def _infer(self, tensor: np.ndarray) -> np.ndarray:
+        outputs = self.session.run([self.output_name], {self.input_name: tensor})
+        return outputs[0]
+
+
+class OpenVINODetector(_TensorRTBaseDetector):
+    """OpenVINO backend for Intel CPUs/GPUs/VPUs (expects YOLO-style outputs)."""
+
+    def __init__(self, config: DetectorConfig):
+        try:
+            from openvino.runtime import Core  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(
+                "OpenVINO backend selected but 'openvino' package is not installed. "
+                "Install with `pip install openvino`."
+            ) from exc
+
+        self.ov_core = Core()
+
+        # Map device string to OpenVINO device
+        device_map = {
+            "cpu": "CPU",
+            "gpu": "GPU",
+            "cuda": "GPU",  # Map CUDA to GPU for OpenVINO
+            "auto": "AUTO",
+            "npu": "NPU",  # Neural Processing Unit (if available)
+        }
+
+        ov_device = device_map.get(str(config.device).lower(), "CPU")
+
+        LOGGER.info(
+            "Loading OpenVINO model '%s' on device '%s'",
+            config.model_path,
+            ov_device,
+        )
+
+        # Load model (supports .xml + .bin or .onnx)
+        model = self.ov_core.read_model(model=config.model_path)
+
+        # Compile model for target device
+        self.compiled_model = self.ov_core.compile_model(model=model, device_name=ov_device)
+
+        # Get input/output info
+        self.input_layer = self.compiled_model.input(0)
+        self.output_layer = self.compiled_model.output(0)
+
+        # Determine input shape
+        input_shape = self.input_layer.shape
+        if config.input_size:
+            input_hw = (int(config.input_size[0]), int(config.input_size[1]))
+        elif len(input_shape) == 4 and input_shape[2] > 0 and input_shape[3] > 0:
+            # Shape is typically [N, C, H, W]
+            input_hw = (int(input_shape[2]), int(input_shape[3]))
+        else:
+            LOGGER.warning("Could not determine input size from OpenVINO model, defaulting to 640x640")
+            input_hw = (640, 640)
+
+        super().__init__(config, input_hw)
+
+        # Create inference request
+        self.infer_request = self.compiled_model.create_infer_request()
+
+        # Warmup
+        if config.warmup:
+            LOGGER.debug("Running OpenVINO detector warmup")
+            dummy = np.zeros((1, 3, *self.input_hw), dtype=np.float32)
+            self.infer_request.infer({0: dummy})
+
+    def _infer(self, tensor: np.ndarray) -> np.ndarray:
+        result = self.infer_request.infer({0: tensor})
+        return result[self.output_layer]

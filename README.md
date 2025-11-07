@@ -7,7 +7,7 @@ A production-ready, multi-stream (≤32) real-time video analytics pipeline with
 ### 🔧 Core Pipeline
 - **Multi-Stream Processing**: Handle up to 32 concurrent RTSP/RTMP video streams
 - **RTSP/RTMP Ingestion**: Asynchronous OpenCV capture with auto-reconnection
-- **AI Detection**: Ultralytics YOLOv8 detector (TensorRT-friendly, pluggable architecture)
+- **AI Detection**: Multiple inference backends (Ultralytics, ONNX Runtime, OpenVINO, TensorRT)
 - **Object Tracking**: Lightweight IOU tracker (ByteTrack/DeepSORT compatible)
 - **Event Streaming**: Kafka sink for publishing structured detection/tracking events
 - **Observability**: Prometheus metrics exporter for Grafana dashboards
@@ -63,7 +63,16 @@ python scripts/run_pipeline.py --config my-pipeline.yaml --log-level INFO
 When running in production you can install the package (via `uv sync` or `pip install`) and use the entrypoint:
 
 ```bash
+# Install with Ultralytics YOLO (default)
 pip install realtime-video-analytics-32streams[full]
+
+# Install with ONNX Runtime support
+pip install realtime-video-analytics-32streams[full-onnx]
+
+# Install with OpenVINO support
+pip install realtime-video-analytics-32streams[full-openvino]
+
+# Run pipeline
 realtime-analytics --config /etc/analytics/pipeline.yaml
 ```
 
@@ -296,14 +305,90 @@ When the pipeline shuts down it terminates the ffmpeg subprocess automatically. 
 |-----------|-----------|
 | Language | Python 3.10+ |
 | Framework | FastAPI, Uvicorn |
-| Computer Vision | OpenCV, Ultralytics |
-| Object Detection | YOLOv8, TensorRT |
+| Computer Vision | OpenCV |
+| Inference Engines | Ultralytics, ONNX Runtime, OpenVINO, TensorRT |
+| Object Detection | YOLOv8, YOLOv9, YOLOv10, Custom YOLO models |
 | Async I/O | asyncio, aiofiles |
 | Messaging | Kafka (aiokafka) |
 | Metrics | Prometheus |
 | Frontend | Vanilla JavaScript, WebSocket |
 | Container | Docker, Docker Compose |
 | Configuration | YAML |
+
+## 🚀 Inference Backends
+
+The pipeline supports multiple inference backends for different hardware and performance requirements:
+
+| Backend | Device Support | Speed | Best For |
+|---------|---------------|-------|----------|
+| **Ultralytics** | CPU, CUDA | Good | Development, prototyping |
+| **ONNX Runtime** | CPU, CUDA | Better | Cross-platform deployment |
+| **OpenVINO** | CPU, GPU, NPU | Best (Intel) | Intel hardware optimization |
+| **TensorRT** | CUDA | Best (NVIDIA) | NVIDIA GPU maximum performance |
+
+### Quick Backend Setup
+
+**Ultralytics YOLO** (Default):
+```bash
+uv sync --extra detector
+```
+
+**ONNX Runtime** (CPU):
+```bash
+uv sync --extra onnx
+```
+
+**ONNX Runtime** (GPU):
+```bash
+uv sync --extra onnx-gpu
+```
+
+**OpenVINO**:
+```bash
+uv sync --extra openvino
+```
+
+**TensorRT**:
+```bash
+# Requires manual installation of NVIDIA TensorRT
+pip install tensorrt pycuda
+```
+
+### Configuration Examples
+
+**ONNX Runtime**:
+```yaml
+detector:
+  backend: onnx
+  model_path: models/yolov8n.onnx
+  device: cuda  # or cpu
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+**OpenVINO**:
+```yaml
+detector:
+  backend: openvino
+  model_path: models/yolov8n.xml
+  device: cpu  # or gpu, auto, npu
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+```
+
+**TensorRT**:
+```yaml
+detector:
+  backend: tensorrt
+  model_path: models/yolov8n.engine
+  device: cuda
+  input_size: [640, 640]
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+  half: true
+```
+
+For detailed backend documentation and model conversion guides, see [docs/inference_backends.md](docs/inference_backends.md).
 
 ## 🔧 Troubleshooting
 
