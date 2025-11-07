@@ -11,7 +11,7 @@ A production-ready, multi-stream (≤32) real-time video analytics pipeline with
 - **RTSP/RTMP Ingestion**: Asynchronous OpenCV capture with auto-reconnection
 - **H.265/HEVC Support**: Full support for H.265 video codec via FFmpeg backend
 - **AI Detection**: Multiple inference backends (Ultralytics, ONNX Runtime 1.23.0+, OpenVINO, TensorRT, RKNN)
-- **Multiple Model Types**: YOLOv8, YOLOv5, and ResNet classification support
+- **Multiple Model Types**: YOLOv8, YOLOv5, ResNet classification, and temporal models (CNN-LSTM, 3D CNN, ConvGRU) for action recognition
 - **Object Tracking**: Lightweight IOU tracker (ByteTrack/DeepSORT compatible)
 - **Event Streaming**: Kafka sink with adaptive quality and frame rate limiting
 - **Smart Scheduling**: Priority-based stream management with health monitoring
@@ -285,6 +285,51 @@ Everything is expressed in YAML (see `config/sample-pipeline.yaml`). Key section
 - `max_concurrent_streams`: hard guard against accidental over-subscription.
 
 `src/realtime_analytics/config.py` declares the dataclasses, validation logic, and defaults. For backend-specific setup guides (Ultralytics YOLO / TensorRT) see `docs/model_integration_cn.md`.
+
+### 🎬 Temporal Video Analysis (Action Recognition)
+
+The system supports temporal models that analyze sequences of frames for action recognition and event detection:
+
+**Supported Temporal Models**:
+- **CNN-LSTM**: Combines CNN spatial features with LSTM temporal modeling
+- **3D CNN**: 3D convolutions for spatiotemporal feature learning (C3D, I3D, ResNet3D)
+- **ConvGRU**: Efficient convolutional GRU for video analysis
+- **SlowFast**: Dual-pathway networks for action recognition
+
+**Use Cases**: Security (person falling, fighting), traffic (accidents, violations), behavior analysis
+
+**Example Configuration**:
+```yaml
+detectors:
+  action_detector:
+    model_type: "cnn_lstm"  # or "3d_cnn", "conv_gru", "slow_fast"
+    backend: "onnxruntime"  # or "openvino"
+    model_path: "/models/action_recognition.onnx"
+    device: "cuda"
+
+    # Temporal parameters
+    sequence_length: 16  # Number of frames in sequence
+    sequence_stride: 2   # Sample every Nth frame
+    temporal_overlap: 0.5  # Overlap between sequences
+    num_action_classes: 400  # Kinetics-400 classes
+
+    # Optional action labels
+    action_classes:
+      - "walking"
+      - "running"
+      - "falling"
+      # ... more classes
+
+streams:
+  - name: "security_camera"
+    url: "rtsp://camera/stream"
+    target_fps: 10  # Lower FPS for temporal models
+    detector_id: "action_detector"
+```
+
+📖 **Full Documentation**: See [docs/TEMPORAL_DETECTION.md](docs/TEMPORAL_DETECTION.md) for detailed guide on temporal models, model preparation, optimization strategies, and examples.
+
+📋 **Example Config**: See [config_temporal_example.yaml](config_temporal_example.yaml) for complete temporal detection configuration.
 
 ## Simulating cameras with ffmpeg
 

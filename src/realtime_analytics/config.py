@@ -113,19 +113,23 @@ class DetectorConfig:
     - yolov5: YOLOv5 object detection
     - yolov8: YOLOv8 object detection
     - resnet: ResNet classification
+    - cnn_lstm: CNN-LSTM video sequence analysis
+    - 3d_cnn: 3D CNN video analysis
+    - conv_gru: Convolutional GRU video analysis
+    - slow_fast: SlowFast networks for action recognition
 
     Supported backends:
     - ultralytics: Ultralytics YOLO (YOLOv5, YOLOv8)
     - tensorrt: NVIDIA TensorRT (YOLOv5, YOLOv8)
-    - onnx/onnxruntime: ONNX Runtime (YOLOv5, YOLOv8, ResNet)
-    - openvino: Intel OpenVINO (YOLOv5, YOLOv8, ResNet)
+    - onnx/onnxruntime: ONNX Runtime (YOLOv5, YOLOv8, ResNet, temporal models)
+    - openvino: Intel OpenVINO (YOLOv5, YOLOv8, ResNet, temporal models)
     - rknn: Rockchip RK3588 (YOLOv5, YOLOv8)
     """
 
     model_path: str = "yolov8n.pt"
     device: str = "auto"
     backend: str = "ultralytics"
-    model_type: str = "yolov8"  # yolov5 | yolov8 | resnet
+    model_type: str = "yolov8"  # yolov5 | yolov8 | resnet | cnn_lstm | 3d_cnn | conv_gru | slow_fast
     conf_threshold: float = 0.5
     iou_threshold: float = 0.45
     classes: Optional[List[int]] = None
@@ -137,13 +141,21 @@ class DetectorConfig:
     resnet_num_classes: int = 1000  # For ResNet classification
     resnet_top_k: int = 5  # Return top-K predictions for ResNet
 
+    # Temporal model parameters
+    sequence_length: int = 16  # Number of frames in sequence for temporal models
+    sequence_stride: int = 1  # Stride between frames in sequence
+    temporal_overlap: float = 0.5  # Overlap between consecutive sequences (0-1)
+    temporal_pooling: str = "avg"  # Pooling method: avg | max | last
+    action_classes: Optional[List[str]] = None  # Action class names for temporal models
+    num_action_classes: int = 400  # Number of action classes (e.g., Kinetics-400)
+
     def validate(self) -> None:
         if not self.model_path:
             raise ConfigError("Detector model_path must not be empty")
         valid_backends = {"ultralytics", "tensorrt", "onnx", "onnxruntime", "openvino", "rknn", "rk3588"}
         if self.backend not in valid_backends:
             raise ConfigError(f"Detector backend must be one of {valid_backends}")
-        valid_model_types = {"yolov5", "yolov8", "resnet"}
+        valid_model_types = {"yolov5", "yolov8", "resnet", "cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
         if self.model_type not in valid_model_types:
             raise ConfigError(f"Model type must be one of {valid_model_types}")
         if not (0.0 < self.conf_threshold <= 1.0):
@@ -161,6 +173,22 @@ class DetectorConfig:
                 raise ConfigError("resnet_num_classes must be > 0")
             if self.resnet_top_k <= 0:
                 raise ConfigError("resnet_top_k must be > 0")
+
+        # Temporal model validation
+        temporal_models = {"cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
+        if self.model_type in temporal_models:
+            if self.backend not in {"onnx", "onnxruntime", "openvino"}:
+                raise ConfigError(f"Temporal models currently only supported with ONNX Runtime or OpenVINO backends")
+            if self.sequence_length <= 0:
+                raise ConfigError("sequence_length must be > 0 for temporal models")
+            if self.sequence_stride <= 0:
+                raise ConfigError("sequence_stride must be > 0 for temporal models")
+            if not (0.0 <= self.temporal_overlap < 1.0):
+                raise ConfigError("temporal_overlap must be in [0, 1) for temporal models")
+            if self.temporal_pooling not in {"avg", "max", "last"}:
+                raise ConfigError("temporal_pooling must be one of: avg, max, last")
+            if self.num_action_classes <= 0:
+                raise ConfigError("num_action_classes must be > 0 for temporal models")
 
 
 @dataclass(slots=True)
