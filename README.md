@@ -489,7 +489,7 @@ detector:
   backend: onnx
   model_path: models/yolov8n.onnx
   device: cuda  # or cpu
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   warmup: true  # Recommended for ONNX Runtime 1.23.0+
 ```
@@ -500,7 +500,7 @@ detector:
   backend: openvino
   model_path: models/yolov8n.xml
   device: cpu  # or gpu, auto, npu
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -511,7 +511,7 @@ detector:
   model_path: models/yolov8n.engine
   device: cuda
   input_size: [640, 640]
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: true
 ```
@@ -523,7 +523,7 @@ detector:
   model_path: models/yolov8n.rknn
   device: npu  # RK3588 NPU
   input_size: [640, 640]
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   warmup: true  # Recommended for NPU warmup
 ```

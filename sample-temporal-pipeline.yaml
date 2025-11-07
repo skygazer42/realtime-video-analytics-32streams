@@ -26,7 +26,7 @@ detectors:
     backend: "onnxruntime"
     model_path: "/models/cnn_lstm_kinetics400.onnx"
     device: "cuda"  # or "cpu"
-    conf_threshold: 0.3
+    confidence_threshold: 0.3
     half: false
     warmup: true
 
@@ -53,7 +53,7 @@ detectors:
     backend: "onnxruntime"
     model_path: "/models/resnet3d_kinetics.onnx"
     device: "cuda"
-    conf_threshold: 0.35
+    confidence_threshold: 0.35
     half: false
     warmup: true
 
@@ -71,7 +71,7 @@ detectors:
     backend: "openvino"  # OpenVINO for Intel hardware
     model_path: "/models/convgru_ucf101.xml"
     device: "cpu"
-    conf_threshold: 0.4
+    confidence_threshold: 0.4
     warmup: true
 
     sequence_length: 10  # Shorter sequence for GRU
@@ -86,7 +86,7 @@ detectors:
     backend: "onnxruntime"
     model_path: "/models/slowfast_kinetics.onnx"
     device: "cuda"
-    conf_threshold: 0.3
+    confidence_threshold: 0.3
     half: true  # Use FP16 for faster inference
 
     sequence_length: 32  # SlowFast uses longer sequences
@@ -101,7 +101,7 @@ detector:
   backend: "onnxruntime"
   model_path: "yolov8n.onnx"
   device: "cuda"
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 
 # Tracker configuration

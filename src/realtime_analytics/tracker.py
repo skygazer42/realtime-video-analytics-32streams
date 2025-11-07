@@ -33,7 +33,7 @@ class Track:
     sequence_end_frame: int | None = None
 
 
-class IOUTracker:
+class IouTracker:
     """
     Very small IOU based tracker, keeps the public API open for future upgrades.
 

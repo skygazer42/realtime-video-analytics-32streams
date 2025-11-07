@@ -59,19 +59,19 @@ def create_detector(config: DetectorConfig) -> BaseDetector:
     # Temporal models (CNN-LSTM, 3D CNN, ConvGRU, SlowFast)
     temporal_models = {"cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
     if model_type in temporal_models:
-        from .temporal_detector import CNNLSTMDetector, ThreeDCNNDetector, ConvGRUDetector
+        from .temporal_detector import CNNLSTMDetector, CNN3DDetector, ConvGRUDetector
 
         if model_type == "cnn_lstm":
             return CNNLSTMDetector(config)
         if model_type == "3d_cnn":
-            return ThreeDCNNDetector(config)
+            return CNN3DDetector(config)
         if model_type == "conv_gru":
             return ConvGRUDetector(config)
         if model_type == "slow_fast":
             # SlowFast can use similar architecture to 3D CNN
-            # For now, use ThreeDCNNDetector (can be specialized later)
+            # For now, use CNN3DDetector (can be specialized later)
             LOGGER.info("Using 3D CNN detector for SlowFast model")
-            return ThreeDCNNDetector(config)
+            return CNN3DDetector(config)
         raise ValueError(f"Temporal model type '{model_type}' not implemented")
 
     # ResNet classification models
@@ -133,7 +133,7 @@ class UltralyticsDetector(BaseDetector):
             self._model.predict(
                 source=dummy,
                 device=self.config.device,
-                conf=self.config.conf_threshold,
+                conf=self.config.confidence_threshold,
                 iou=self.config.iou_threshold,
                 verbose=False,
                 half=self.config.half,
@@ -147,7 +147,7 @@ class UltralyticsDetector(BaseDetector):
         result_list = self._model.predict(
             source=packet.frame,
             device=self.config.device,
-            conf=self.config.conf_threshold,
+            conf=self.config.confidence_threshold,
             iou=self.config.iou_threshold,
             classes=self.config.classes,
             half=self.config.half,
@@ -309,7 +309,7 @@ class _TensorRTBaseDetector(BaseDetector):
         class_indices = np.argmax(scores, axis=1)
         confidences = scores[np.arange(scores.shape[0]), class_indices]
 
-        mask = confidences >= self.config.conf_threshold
+        mask = confidences >= self.config.confidence_threshold
         if self.config.classes:
             mask &= np.isin(class_indices, np.array(self.config.classes))
         boxes = boxes[mask]
@@ -964,7 +964,7 @@ class ResNetOpenVINODetector(BaseDetector):
         detections: List[Detection] = []
 
         for i, (class_id, confidence) in enumerate(zip(top_k_indices, top_k_probs)):
-            if confidence >= self.config.conf_threshold:
+            if confidence >= self.config.confidence_threshold:
                 detections.append(
                     Detection(
                         stream_name=packet.stream.name,
@@ -1097,7 +1097,7 @@ class ResNetONNXDetector(BaseDetector):
         detections: List[Detection] = []
 
         for class_id, confidence in zip(top_k_indices, top_k_probs):
-            if confidence >= self.config.conf_threshold:
+            if confidence >= self.config.confidence_threshold:
                 detections.append(
                     Detection(
                         stream_name=packet.stream.name,

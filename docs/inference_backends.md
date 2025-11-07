@@ -56,7 +56,7 @@ detector:
   model_type: yolov8  # yolov5 | yolov8 | resnet
   model_path: models/yolov8n.onnx
   device: cuda
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -68,7 +68,7 @@ detector:
   backend: onnx
   model_type: yolov8
   model_path: models/yolov8n.onnx
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -78,7 +78,7 @@ detector:
   backend: tensorrt  # or onnx, openvino
   model_type: yolov5
   model_path: models/yolov5s.engine
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -92,7 +92,7 @@ detector:
   backend: openvino  # or onnx
   model_type: resnet
   model_path: models/resnet50.xml
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   resnet_num_classes: 1000  # Number of classes (e.g., ImageNet)
   resnet_top_k: 5  # Return top-K predictions
 ```
@@ -152,7 +152,7 @@ detector:
   backend: ultralytics
   model_path: models/yolov8n.pt  # or yolov8s.pt, yolov8m.pt, etc.
   device: cuda  # or cpu, cuda:0, cuda:1, etc.
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: false  # Set to true for FP16 inference (faster on GPU)
   warmup: true
@@ -166,7 +166,7 @@ detector:
   backend: ultralytics
   model_path: models/yolov8n.pt
   device: cuda:0
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: true  # Enable FP16 for faster inference
 ```
@@ -204,7 +204,7 @@ detector:
   model_path: models/yolov8n.onnx
   device: cuda  # or cpu
   input_size: [640, 640]  # Model input dimensions (optional, auto-detected)
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: false  # Note: ONNX models are typically exported as FP32
   warmup: true
@@ -269,7 +269,7 @@ detector:
   model_path: models/yolov8n.xml  # OpenVINO IR format (.xml + .bin)
   device: cpu  # or GPU, AUTO, NPU
   input_size: [640, 640]  # Optional, auto-detected
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   warmup: true
 ```
@@ -352,7 +352,7 @@ detector:
   model_path: models/yolov8n.engine  # TensorRT engine file
   device: cuda  # TensorRT only supports CUDA
   input_size: [640, 640]  # Required for dynamic engines
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: true  # Match engine precision (FP16/FP32)
   warmup: true
@@ -442,7 +442,7 @@ detector:
   model_path: models/yolov8n.rknn  # RKNN model file
   device: npu  # RK3588 NPU
   input_size: [640, 640]
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   warmup: true  # Recommended for NPU initialization
 ```
@@ -745,7 +745,7 @@ detector:
   backend: onnx  # or openvino, tensorrt
   model_path: models/yolov8n.onnx
   device: cuda
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: false
   warmup: true

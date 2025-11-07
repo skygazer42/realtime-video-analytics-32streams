@@ -404,7 +404,7 @@ class CNNLSTMDetector(BaseTemporalDetector):
         h, w = first_packet.frame.shape[:2]
 
         for class_id, confidence in zip(top_k_indices, top_k_probs):
-            if confidence >= self.config.conf_threshold:
+            if confidence >= self.config.confidence_threshold:
                 # Get action label if available
                 action_label = None
                 if self.config.action_classes and class_id < len(self.config.action_classes):
@@ -426,7 +426,7 @@ class CNNLSTMDetector(BaseTemporalDetector):
         return detections
 
 
-class ThreeDCNNDetector(BaseTemporalDetector):
+class CNN3DDetector(BaseTemporalDetector):
     """
     3D CNN detector for spatiotemporal video analysis.
 
@@ -620,7 +620,7 @@ class ThreeDCNNDetector(BaseTemporalDetector):
         h, w = first_packet.frame.shape[:2]
 
         for class_id, confidence in zip(top_k_indices, top_k_probs):
-            if confidence >= self.config.conf_threshold:
+            if confidence >= self.config.confidence_threshold:
                 action_label = None
                 if self.config.action_classes and class_id < len(self.config.action_classes):
                     action_label = self.config.action_classes[class_id]
@@ -779,7 +779,7 @@ class ConvGRUDetector(BaseTemporalDetector):
         h, w = first_packet.frame.shape[:2]
 
         for class_id, confidence in zip(top_k_indices, top_k_probs):
-            if confidence >= self.config.conf_threshold:
+            if confidence >= self.config.confidence_threshold:
                 action_label = None
                 if self.config.action_classes and class_id < len(self.config.action_classes):
                     action_label = self.config.action_classes[class_id]

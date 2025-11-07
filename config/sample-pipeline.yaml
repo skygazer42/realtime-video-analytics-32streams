@@ -54,7 +54,7 @@ detector:
   model_path: yolov8n.pt       # 可改为 models/yolo/xxx.pt
   device: auto                 # auto / cpu / cuda:0 ...
   backend: ultralytics         # ultralytics / tensorrt
-  conf_threshold: 0.5          # 置信度阈值
+  confidence_threshold: 0.5          # 置信度阈值
   iou_threshold: 0.45          # NMS IoU 阈值
   classes: null                # 过滤类别（null 表示全部）
   half: false                  # 是否使用半精度
@@ -66,12 +66,12 @@ detectors:
     backend: ultralytics
     model_path: models/yolo/entrance.pt
     device: cuda:0
-    conf_threshold: 0.45
+    confidence_threshold: 0.45
   parking:
     backend: tensorrt
     model_path: models/tensorrt/parking_fp16.engine
     input_size: [640, 640]
-    conf_threshold: 0.5
+    confidence_threshold: 0.5
     iou_threshold: 0.5
 
 # 轻量级 IOU 跟踪器参数

@@ -13,7 +13,7 @@ detector:
   backend: ultralytics   # ultralytics | tensorrt
   model_path: yolov8n.pt
   device: auto           # auto/cpu/cuda:0/...
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -42,7 +42,7 @@ detector:
      backend: ultralytics
      model_path: models/yolov8n.pt
      device: cuda:0       # auto / cpu / cuda:0 ...
-     conf_threshold: 0.5
+     confidence_threshold: 0.5
      iou_threshold: 0.45
      half: true           # GPU 上可选用半精度
      warmup: true
@@ -73,7 +73,7 @@ detector:
      backend: tensorrt
      model_path: models/yolov8s_fp16.engine
      input_size: [640, 640]        # 必须设置静态尺寸
-     conf_threshold: 0.45
+     confidence_threshold: 0.45
      iou_threshold: 0.5
      half: true                    # 若 engine 采用 FP16
 

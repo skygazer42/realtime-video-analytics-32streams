@@ -371,7 +371,7 @@ def main():
         sequence_stride=args.sequence_stride,
         temporal_overlap=args.temporal_overlap,
         num_action_classes=args.num_classes,
-        conf_threshold=args.conf_threshold,
+        confidence_threshold=args.confidence_threshold,
         half=args.half,
         warmup=True,
     )
