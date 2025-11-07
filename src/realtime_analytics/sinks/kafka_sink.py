@@ -100,20 +100,35 @@ class KafkaSink:
         if not self.config.enabled or not self._producer:
             return  # 未启用或生产者未连接时直接返回
 
-        track_list = [
-            {
+        track_list = []
+        has_temporal = False
+
+        for track in tracks:
+            track_dict = {
                 "track_id": track.track_id,
                 "class_id": track.class_id,
                 "confidence": track.confidence,
                 "bbox_xyxy": track.bbox_xyxy,
             }
-            for track in tracks
-        ]  # 将 Track 对象转换为可序列化的字典
+
+            # Add temporal fields if present
+            if track.action_label is not None:
+                track_dict["action_label"] = track.action_label
+                has_temporal = True
+            if track.temporal_score is not None:
+                track_dict["temporal_score"] = track.temporal_score
+            if track.sequence_start_frame is not None:
+                track_dict["sequence_start_frame"] = track.sequence_start_frame
+            if track.sequence_end_frame is not None:
+                track_dict["sequence_end_frame"] = track.sequence_end_frame
+
+            track_list.append(track_dict)
 
         payload = {
             "stream": stream_name,
             "frame_id": frame_id,
             "tracks": track_list,
+            "is_temporal": has_temporal,  # Indicate if this contains temporal detections
         }  # Kafka 消息主体
 
         # Frame rate limiting: only send frames at a controlled rate
