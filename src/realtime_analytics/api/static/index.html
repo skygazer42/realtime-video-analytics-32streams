@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Realtime Video Analytics Dashboard - 32 Streams</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/enhancements.css" />
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   </head>
   <body>
     <header>
@@ -97,6 +100,38 @@
         <div class="stat-content">
           <div class="stat-value" id="stat-uptime">00:00:00</div>
           <div class="stat-label">Uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Charts Section -->
+    <div class="charts-section">
+      <div class="charts-header">
+        <h2>📊 Analytics</h2>
+        <button id="charts-toggle" class="icon-btn" title="Toggle charts">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </button>
+      </div>
+      <div class="charts-container" id="charts-container">
+        <div class="chart-card">
+          <h3>Detection Rate</h3>
+          <div class="chart-wrapper">
+            <canvas id="detection-chart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Stream FPS</h3>
+          <div class="chart-wrapper">
+            <canvas id="fps-chart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Stream Health</h3>
+          <div class="chart-wrapper">
+            <canvas id="health-chart"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -351,6 +386,10 @@
       </div>
     </div>
 
+    <!-- Load notification and charts modules first -->
+    <script src="/static/notifications.js"></script>
+    <script src="/static/charts.js"></script>
+    <!-- Load main app -->
     <script src="/static/main.js"></script>
   </body>
 </html>
