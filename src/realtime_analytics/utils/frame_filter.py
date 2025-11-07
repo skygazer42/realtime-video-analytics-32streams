@@ -19,7 +19,7 @@ class MotionFilterConfig:
 class MotionFilter:
     def __init__(self, config: MotionFilterConfig, frame_shape: Tuple[int, int, int]):
         self.config = config
-        self.prev_gray: np.ndarray | None = None
+        self.previous_gray: np.ndarray | None = None
         self.alpha = 1.0 / max(1, config.history)
         self.accumulator: np.ndarray | None = None
 
@@ -29,14 +29,14 @@ class MotionFilter:
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, self.config.blur_kernel, 0)
-        if self.prev_gray is None:
-            self.prev_gray = gray
+        if self.previous_gray is None:
+            self.previous_gray = gray
             return True
 
-        diff = cv2.absdiff(gray, self.prev_gray)
+        diff = cv2.absdiff(gray, self.previous_gray)
         _, thresh = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)
         motion_ratio = float(np.count_nonzero(thresh)) / float(thresh.size)
-        self.prev_gray = gray
+        self.previous_gray = gray
         return motion_ratio >= self.config.threshold
 
 

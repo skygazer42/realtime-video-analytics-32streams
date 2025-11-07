@@ -25,7 +25,7 @@ from .detector import BaseDetector, Detection, create_detector, filter_detection
 from .ffmpeg_simulator import FFmpegStreamError, FFmpegStreamSimulator
 from .sinks import KafkaSink
 from .telemetry import MetricsPublisher
-from .tracker import IOUTracker
+from .tracker import IouTracker
 from .video_stream import FramePacket, VideoStream
 from .utils import MotionFilter, MotionFilterConfig, apply_roi, downsample
 
@@ -75,7 +75,7 @@ class StreamHealth:
 class StreamWorkerContext:
     stream: StreamConfig
     detector: BaseDetector
-    tracker: IOUTracker
+    tracker: IouTracker
     kafka: KafkaSink
     metrics: MetricsPublisher
     health: StreamHealth
@@ -175,7 +175,7 @@ class StreamWorker:
             detections = self.ctx.detector.predict(detection_packet)
             if ratio < 0.999:
                 detections = self._rescale_detections(detections, ratio)
-            filtered = filter_detections(detections, self.ctx.detector.config.conf_threshold)
+            filtered = filter_detections(detections, self.ctx.detector.config.confidence_threshold)
             tracks = self.ctx.tracker.update(packet.stream.name, filtered)
             self.ctx.metrics.update_counters(
                 stream=packet.stream.name,
@@ -416,7 +416,7 @@ class AnalyticsPipeline:
 
     def __init__(self, config: PipelineConfig):
         self.config = config
-        self.tracker = IOUTracker(config.tracker)
+        self.tracker = IouTracker(config.tracker)
         self.kafka = KafkaSink(config.kafka)
         self.metrics = MetricsPublisher(config.prometheus)
         self.scheduler = StreamScheduler(max_concurrent_streams=config.max_concurrent_streams)

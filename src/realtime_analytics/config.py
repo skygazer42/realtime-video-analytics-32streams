@@ -130,7 +130,7 @@ class DetectorConfig:
     device: str = "auto"
     backend: str = "ultralytics"
     model_type: str = "yolov8"  # yolov5 | yolov8 | resnet | cnn_lstm | 3d_cnn | conv_gru | slow_fast
-    conf_threshold: float = 0.5
+    confidence_threshold: float = 0.5
     iou_threshold: float = 0.45
     classes: Optional[List[int]] = None
     half: bool = False
@@ -158,8 +158,8 @@ class DetectorConfig:
         valid_model_types = {"yolov5", "yolov8", "resnet", "cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
         if self.model_type not in valid_model_types:
             raise ConfigError(f"Model type must be one of {valid_model_types}")
-        if not (0.0 < self.conf_threshold <= 1.0):
-            raise ConfigError("conf_threshold must be in (0, 1]")
+        if not (0.0 < self.confidence_threshold <= 1.0):
+            raise ConfigError("confidence_threshold must be in (0, 1]")
         if not (0.0 < self.iou_threshold <= 1.0):
             raise ConfigError("iou_threshold must be in (0, 1]")
         if self.input_size and len(self.input_size) != 2:

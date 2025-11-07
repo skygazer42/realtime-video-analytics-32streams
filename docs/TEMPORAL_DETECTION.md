@@ -122,7 +122,7 @@ detector:
 - `num_action_classes`: Number of action classes (default: 400 for Kinetics)
 - `action_classes`: List of action class names (optional, for better logging)
 - `input_size`: Input spatial resolution `[H, W]`
-- `conf_threshold`: Confidence threshold for predictions (default: 0.5)
+- `confidence_threshold`: Confidence threshold for predictions (default: 0.5)
 
 ## Model Preparation
 
@@ -351,7 +351,7 @@ Temporal detectors integrate seamlessly with the existing pipeline:
 **Solution**:
 - Increase `sequence_length` for more temporal context
 - Reduce `sequence_stride` to capture more frames
-- Adjust `conf_threshold`
+- Adjust `confidence_threshold`
 
 ### Issue: Model Loading Fails
 

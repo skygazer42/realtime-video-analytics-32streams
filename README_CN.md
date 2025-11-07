@@ -186,7 +186,7 @@ detector:
   model_type: yolov8
   model_path: models/yolov8n.onnx
   device: cuda
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -197,7 +197,7 @@ detector:
   model_type: yolov5
   model_path: models/yolov5s.engine
   device: cuda
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -212,7 +212,7 @@ detector:
   model_type: resnet
   model_path: models/resnet50.xml
   device: cpu
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   resnet_num_classes: 1000  # 类别数量（如 ImageNet）
   resnet_top_k: 5  # 返回 top-K 预测结果
 ```
@@ -241,7 +241,7 @@ detector:
   model_path: models/yolov5s_fp16.engine
   device: cuda
   input_size: [640, 640]
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   half: true  # 若引擎以 FP16 构建
 ```
@@ -254,7 +254,7 @@ detector:
   model_type: yolov8  # 或 yolov5、resnet
   model_path: models/yolov8n.xml  # 需要同时存在 .xml 和 .bin
   device: auto  # 或 cpu、gpu、npu
-  conf_threshold: 0.5
+  confidence_threshold: 0.5
   iou_threshold: 0.45
 ```
 
@@ -307,7 +307,7 @@ streams:
 
 1. **VideoStream**（`video_stream.py`）：异步调用 OpenCV 打开 RTSP/RTMP 流，按配置进行暖机、限帧与断线重连。
 2. **Detector**（`detector.py`）：可插拔的推理后端（Ultralytics、TensorRT），统一输出检测结果。
-3. **IOUTracker**（`tracker.py`）：轻量级 IOU 匹配器，维护每路流的跟踪状态。
+3. **IouTracker**（`tracker.py`）：轻量级 IOU 匹配器，维护每路流的跟踪状态。
 4. **KafkaSink**（`sinks/kafka_sink.py`）：可选，将每帧的跟踪结果推送到 Kafka topic。
 5. **MetricsPublisher**（`telemetry/metrics.py`）：在 `http://host:port/metrics` 暴露 Prometheus 指标：帧数量、检测数量、活跃轨迹数等。
 6. **AnalyticsPipeline**（`pipeline.py`）：为每路流启动协程任务，串联检测、跟踪、指标与事件输出，并处理优雅停机。
