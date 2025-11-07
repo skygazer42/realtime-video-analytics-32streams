@@ -56,6 +56,24 @@ def create_detector(config: DetectorConfig) -> BaseDetector:
     backend = config.backend.lower()
     model_type = config.model_type.lower()
 
+    # Temporal models (CNN-LSTM, 3D CNN, ConvGRU, SlowFast)
+    temporal_models = {"cnn_lstm", "3d_cnn", "conv_gru", "slow_fast"}
+    if model_type in temporal_models:
+        from .temporal_detector import CNNLSTMDetector, ThreeDCNNDetector, ConvGRUDetector
+
+        if model_type == "cnn_lstm":
+            return CNNLSTMDetector(config)
+        if model_type == "3d_cnn":
+            return ThreeDCNNDetector(config)
+        if model_type == "conv_gru":
+            return ConvGRUDetector(config)
+        if model_type == "slow_fast":
+            # SlowFast can use similar architecture to 3D CNN
+            # For now, use ThreeDCNNDetector (can be specialized later)
+            LOGGER.info("Using 3D CNN detector for SlowFast model")
+            return ThreeDCNNDetector(config)
+        raise ValueError(f"Temporal model type '{model_type}' not implemented")
+
     # ResNet classification models
     if model_type == "resnet":
         if backend in ("openvino",):

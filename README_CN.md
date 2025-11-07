@@ -11,7 +11,7 @@
 - **RTSP/RTMP 接入**：基于 OpenCV 的异步捕获，支持自动重连
 - **H.265/HEVC 支持**：通过 FFmpeg 后端完整支持 H.265 视频编解码
 - **AI 检测**：多种推理后端（Ultralytics、ONNX Runtime 1.23.0+、OpenVINO、TensorRT、RKNN）
-- **多模型类型支持**：YOLOv8、YOLOv5 和 ResNet 分类模型
+- **多模型类型支持**：YOLOv8、YOLOv5、ResNet 分类，以及时序模型（CNN-LSTM、3D CNN、ConvGRU）用于动作识别
 - **目标跟踪**：轻量级 IOU 跟踪器（兼容 ByteTrack/DeepSORT）
 - **事件流**：Kafka 输出，支持自适应质量和帧率限制
 - **智能调度**：基于优先级的流管理与健康监控

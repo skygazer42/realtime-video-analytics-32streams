@@ -26,6 +26,12 @@ class Track:
     age: int = 0
     hits: int = 0
 
+    # Temporal detection fields (optional)
+    action_label: str | None = None
+    temporal_score: float | None = None
+    sequence_start_frame: int | None = None
+    sequence_end_frame: int | None = None
+
 
 class IOUTracker:
     """
@@ -48,6 +54,18 @@ class IOUTracker:
 
         for detection in detection_list:
             match_id = self._match_detection(tracks, detection)
+
+            # Extract temporal fields if this is a TemporalDetection
+            temporal_fields = {}
+            if hasattr(detection, "action_label"):
+                temporal_fields["action_label"] = getattr(detection, "action_label", None)
+            if hasattr(detection, "temporal_score"):
+                temporal_fields["temporal_score"] = getattr(detection, "temporal_score", None)
+            if hasattr(detection, "sequence_start_frame"):
+                temporal_fields["sequence_start_frame"] = getattr(detection, "sequence_start_frame", None)
+            if hasattr(detection, "sequence_end_frame"):
+                temporal_fields["sequence_end_frame"] = getattr(detection, "sequence_end_frame", None)
+
             if match_id is None:
                 track = Track(
                     track_id=next(self._next_track_id),
@@ -56,6 +74,7 @@ class IOUTracker:
                     bbox_xyxy=detection.bbox_xyxy,
                     age=0,
                     hits=1,
+                    **temporal_fields,
                 )
                 tracks[track.track_id] = track
                 matched_tracks[track.track_id] = track
@@ -65,6 +84,11 @@ class IOUTracker:
                 track.confidence = detection.confidence
                 track.hits += 1
                 track.age = 0
+
+                # Update temporal fields if present
+                for key, value in temporal_fields.items():
+                    setattr(track, key, value)
+
                 matched_tracks[track.track_id] = track
 
         self._prune_tracks(stream_name, matched_tracks.keys())

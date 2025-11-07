@@ -1,3 +1,22 @@
+// ==================== Initialize Managers ====================
+let chartsManager = null;
+let notificationManager = null;
+let alertsManager = null;
+
+// Initialize after DOM loaded
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof NotificationManager !== 'undefined') {
+    notificationManager = new NotificationManager();
+  }
+  if (typeof StreamChartsManager !== 'undefined') {
+    chartsManager = new StreamChartsManager();
+    chartsManager.initCharts();
+  }
+  if (typeof StreamAlertsManager !== 'undefined' && notificationManager) {
+    alertsManager = new StreamAlertsManager(notificationManager);
+  }
+});
+
 // ==================== DOM Elements ====================
 const statusEl = document.getElementById("status");
 const streamsBody = document.getElementById("streams-body");
@@ -26,6 +45,7 @@ let latestEvents = {};
 let startTime = Date.now();
 let totalDetectionsCount = 0;
 let lastDetectionTime = Date.now();
+let lastDetectionRate = 0;
 let searchQuery = "";
 let filterMode = "all";
 let isPaused = false;
@@ -33,6 +53,8 @@ let currentView = "table"; // "table" or "grid"
 let sortColumn = null;
 let sortDirection = "asc";
 let currentStreamIndex = 0;
+let chartsVisible = true;
+let previousEvents = {}; // Track previous state for change detection
 
 // ==================== Status Management ====================
 function setStatus(connected) {
@@ -56,12 +78,34 @@ function updateStatistics() {
   statTotalStreams.textContent = totalStreams;
   statTotalTracks.textContent = totalTracks;
 
-  // Calculate detections per second (simplified)
+  // Calculate detections per second
   const now = Date.now();
   const timeDiff = (now - lastDetectionTime) / 1000;
-  if (timeDiff > 0) {
+  if (timeDiff > 0 && timeDiff < 60) { // Only update if less than 60 seconds
     const detectionsPerSec = totalDetectionsCount > 0 ? (totalDetectionsCount / timeDiff).toFixed(1) : 0;
     statTotalDetections.textContent = detectionsPerSec;
+    lastDetectionRate = parseFloat(detectionsPerSec);
+  }
+
+  // Update charts if available
+  if (chartsManager && !isPaused) {
+    // Update detection chart
+    chartsManager.updateDetectionChart(lastDetectionRate);
+
+    // Update FPS chart with current stream data
+    chartsManager.updateFPSChart(latestEvents);
+
+    // Calculate average health score
+    let totalHealth = 0;
+    let healthCount = 0;
+    events.forEach(event => {
+      if (event.health !== undefined) {
+        totalHealth += event.health;
+        healthCount++;
+      }
+    });
+    const averageHealth = healthCount > 0 ? totalHealth / healthCount : 0.8; // Default to 0.8 if no data
+    chartsManager.updateHealthChart(averageHealth);
   }
 }
 
@@ -77,6 +121,20 @@ function updateUptime() {
 
 // Update uptime every second
 setInterval(updateUptime, 1000);
+
+// ==================== Utility Functions ====================
+// Debounce function for performance optimization
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
 // ==================== Search and Filter ====================
 function applyFilters(events) {
@@ -96,14 +154,22 @@ function applyFilters(events) {
   });
 }
 
-streamSearchInput.addEventListener("input", (e) => {
-  searchQuery = e.target.value;
+// Debounced search for better performance
+const debouncedSearch = debounce((value) => {
+  searchQuery = value;
   renderStreams();
+}, 300);
+
+streamSearchInput.addEventListener("input", (e) => {
+  debouncedSearch(e.target.value);
 });
 
 streamFilterSelect.addEventListener("change", (e) => {
   filterMode = e.target.value;
   renderStreams();
+  if (notificationManager) {
+    notificationManager.info(`Filter changed to: ${e.target.options[e.target.selectedIndex].text}`, 2000);
+  }
 });
 
 // ==================== Render Streams Table ====================
@@ -276,14 +342,21 @@ function connectWebsocket() {
 
   ws.onopen = () => {
     setStatus(true);
+    if (notificationManager) {
+      notificationManager.success('Connected to server', 3000);
+    }
   };
 
   ws.onclose = () => {
     setStatus(false);
+    if (notificationManager) {
+      notificationManager.warning('Disconnected from server. Reconnecting...', 3000);
+    }
     setTimeout(connectWebsocket, 2000); // 简单重连策略
   };
 
-  ws.onerror = () => {
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
     ws.close(); // 触发 onclose 执行重连
   };
 
@@ -293,18 +366,51 @@ function connectWebsocket() {
       latestEvents = {};
       for (const evt of message.payload.streams || []) {
         latestEvents[evt.stream] = evt;
+
+        // Check for alerts
+        if (alertsManager && previousEvents[evt.stream]) {
+          alertsManager.checkStream(evt.stream, evt, previousEvents[evt.stream]);
+        }
+
+        // Update previous state
+        previousEvents[evt.stream] = { ...evt };
       }
       renderStreams();
       renderTracks();
       renderPreview();
     } else if (message.type === "event") {
       const evt = message.payload;
+      const previousEvt = latestEvents[evt.stream];
+
       latestEvents[evt.stream] = evt;
 
       // Update detection count for statistics
       if (evt.tracks && evt.tracks.length > 0) {
         totalDetectionsCount += evt.tracks.length;
+
+        // Show notification for new detections (throttled)
+        if (notificationManager && evt.tracks.length > 5) {
+          const lastNotificationKey = `detection_${evt.stream}`;
+          const now = Date.now();
+          if (!window.lastNotifications) window.lastNotifications = {};
+          if (!window.lastNotifications[lastNotificationKey] ||
+              now - window.lastNotifications[lastNotificationKey] > 30000) {
+            notificationManager.info(
+              `${evt.tracks.length} objects detected in stream "${evt.stream}"`,
+              3000
+            );
+            window.lastNotifications[lastNotificationKey] = now;
+          }
+        }
       }
+
+      // Check for alerts
+      if (alertsManager && previousEvt) {
+        alertsManager.checkStream(evt.stream, evt, previousEvt);
+      }
+
+      // Update previous state
+      previousEvents[evt.stream] = { ...evt };
 
       renderStreams();
       if (selectedStream === evt.stream) {
@@ -861,6 +967,63 @@ function renderPreview() {
     previewPlaceholder.textContent = "No frame with detections is available for this stream yet.";
   }
 }
+
+// ==================== Charts Toggle ====================
+const chartsToggleBtn = document.getElementById('charts-toggle');
+const chartsContainer = document.getElementById('charts-container');
+
+if (chartsToggleBtn && chartsContainer) {
+  chartsToggleBtn.addEventListener('click', () => {
+    chartsVisible = !chartsVisible;
+    chartsContainer.hidden = !chartsVisible;
+
+    if (chartsVisible && chartsManager) {
+      // Reinitialize charts if they were hidden
+      setTimeout(() => {
+        chartsManager.initCharts();
+      }, 100);
+    }
+  });
+}
+
+// ==================== Additional Keyboard Shortcuts ====================
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    return;
+  }
+
+  // 'C' - Toggle charts
+  if (e.key.toLowerCase() === 'c') {
+    if (chartsToggleBtn) {
+      chartsToggleBtn.click();
+    }
+  }
+
+  // 'R' - Refresh data
+  if (e.key.toLowerCase() === 'r') {
+    if (notificationManager) {
+      notificationManager.info('Refreshing data...', 2000);
+    }
+    fetchInitialSnapshot();
+  }
+
+  // 'A' - Select all streams (show info)
+  if (e.key.toLowerCase() === 'a' && e.ctrlKey) {
+    e.preventDefault();
+    if (notificationManager) {
+      const streamCount = Object.keys(latestEvents).length;
+      notificationManager.info(`Total: ${streamCount} streams active`, 3000);
+    }
+  }
+});
+
+// ==================== Periodic Chart Updates ====================
+// Update charts every 5 seconds
+setInterval(() => {
+  if (chartsManager && !isPaused && chartsVisible) {
+    updateStatistics();
+  }
+}, 5000);
 
 setStatus(false); // 初始展示断开状态
 fetchInitialSnapshot(); // 获取初始快照
