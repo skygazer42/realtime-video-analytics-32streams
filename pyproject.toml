@@ -18,9 +18,10 @@ dependencies = [
 [project.optional-dependencies]
 detector = ["ultralytics>=8.0.0"]
 tensorrt = []
-onnx = ["onnxruntime>=1.16.0"]
-onnx-gpu = ["onnxruntime-gpu>=1.16.0"]
+onnx = ["onnxruntime>=1.23.0"]
+onnx-gpu = ["onnxruntime-gpu>=1.23.0"]
 openvino = ["openvino>=2023.0.0"]
+rknn = ["rknn-toolkit2>=2.0.0"]
 kafka = ["aiokafka>=0.10.0"]
 dashboard = [
   "fastapi>=0.110.0",
@@ -37,7 +38,7 @@ full = [
 ]
 full-onnx = [
   "ultralytics>=8.0.0",
-  "onnxruntime>=1.16.0",
+  "onnxruntime>=1.23.0",
   "aiokafka>=0.10.0",
   "fastapi>=0.110.0",
   "uvicorn[standard]>=0.28.0",

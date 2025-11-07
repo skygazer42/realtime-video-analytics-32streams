@@ -101,6 +101,73 @@ Environment overrides:
 
 > 若需在容器中使用 TensorRT 引擎，请确保宿主机具备 GPU 与匹配的 NVIDIA 驱动，并基于官方 TensorRT/CUDA 基础镜像构建，运行时添加 `--gpus all`。
 
+## 📝 Advanced Logging
+
+The pipeline and dashboard support enhanced logging features for production debugging and monitoring:
+
+### Logging Options
+
+```bash
+# Standard logging (colored console output)
+realtime-analytics --config config.yaml --log-level INFO
+
+# Detailed logging with thread/process info
+realtime-analytics --config config.yaml --log-format detailed
+
+# JSON logging for machine parsing
+realtime-analytics --config config.yaml --log-format json
+
+# Log to file with rotation (10MB x 5 files)
+realtime-analytics --config config.yaml --log-file logs/pipeline.log --log-rotate
+
+# Disable colored output (for piping or file output)
+realtime-analytics --config config.yaml --no-color
+
+# Combined: detailed format + file + rotation
+realtime-analytics --config config.yaml \
+  --log-level DEBUG \
+  --log-format detailed \
+  --log-file /var/log/analytics/pipeline.log \
+  --log-rotate
+```
+
+### Log Formats
+
+**Standard** (default):
+```
+2025-11-07 12:34:56 [INFO    ] realtime_analytics.detector | Loading ONNX model 'models/yolov8n.onnx'
+```
+
+**Detailed** (with process/thread info):
+```
+2025-11-07 12:34:56 [INFO    ] [12345:67890] realtime_analytics.detector:__init__:429 | Loading ONNX model
+```
+
+**JSON** (machine-readable):
+```json
+{"time":"2025-11-07 12:34:56","level":"INFO","logger":"realtime_analytics.detector","message":"Loading ONNX model"}
+```
+
+### Log Levels
+
+- `DEBUG`: Verbose output including warmup, shape detection, preprocessing details
+- `INFO`: Standard operation logs (recommended for production)
+- `WARNING`: Important issues that don't stop execution
+- `ERROR`: Critical errors that may affect stream processing
+- `CRITICAL`: System-level failures
+
+### Dashboard Logging
+
+The dashboard supports the same logging options:
+
+```bash
+realtime-analytics-dashboard \
+  --config config.yaml \
+  --log-level INFO \
+  --log-file logs/dashboard.log \
+  --log-rotate
+```
+
 ## 📊 Dashboard
 
 A modern, feature-rich FastAPI dashboard provides real-time visualization and monitoring of all video streams. The dashboard connects via WebSocket to display live detection events and stream statistics.
@@ -317,14 +384,15 @@ When the pipeline shuts down it terminates the ffmpeg subprocess automatically. 
 
 ## 🚀 Inference Backends
 
-The pipeline supports multiple inference backends for different hardware and performance requirements:
+The pipeline supports multiple inference backends optimized for different hardware platforms and performance requirements:
 
-| Backend | Device Support | Speed | Best For |
-|---------|---------------|-------|----------|
-| **Ultralytics** | CPU, CUDA | Good | Development, prototyping |
-| **ONNX Runtime** | CPU, CUDA | Better | Cross-platform deployment |
-| **OpenVINO** | CPU, GPU, NPU | Best (Intel) | Intel hardware optimization |
-| **TensorRT** | CUDA | Best (NVIDIA) | NVIDIA GPU maximum performance |
+| Backend | Device Support | Speed | Best For | Version |
+|---------|---------------|-------|----------|---------|
+| **Ultralytics** | CPU, CUDA | Good | Development, prototyping | 8.0.0+ |
+| **ONNX Runtime** | CPU, CUDA | Better | Cross-platform deployment | 1.23.0+ |
+| **OpenVINO** | CPU, GPU, NPU | Best (Intel) | Intel hardware optimization | 2023.0+ |
+| **TensorRT** | CUDA | Best (NVIDIA) | NVIDIA GPU maximum performance | 8.6+ |
+| **RKNN** | RK3588 NPU | Best (Rockchip) | RK3588 edge devices (up to 6 TOPS) | 2.0.0+ |
 
 ### Quick Backend Setup
 
@@ -333,12 +401,12 @@ The pipeline supports multiple inference backends for different hardware and per
 uv sync --extra detector
 ```
 
-**ONNX Runtime** (CPU):
+**ONNX Runtime 1.23.0+** (CPU):
 ```bash
 uv sync --extra onnx
 ```
 
-**ONNX Runtime** (GPU):
+**ONNX Runtime 1.23.0+** (GPU):
 ```bash
 uv sync --extra onnx-gpu
 ```
@@ -354,9 +422,18 @@ uv sync --extra openvino
 pip install tensorrt pycuda
 ```
 
+**RKNN (RK3588)**:
+```bash
+# For x86 development/conversion
+uv sync --extra rknn
+
+# For RK3588 runtime (on device)
+pip install rknnlite
+```
+
 ### Configuration Examples
 
-**ONNX Runtime**:
+**ONNX Runtime 1.23.0** (with optimizations):
 ```yaml
 detector:
   backend: onnx
@@ -364,6 +441,7 @@ detector:
   device: cuda  # or cpu
   conf_threshold: 0.5
   iou_threshold: 0.45
+  warmup: true  # Recommended for ONNX Runtime 1.23.0+
 ```
 
 **OpenVINO**:
@@ -388,7 +466,19 @@ detector:
   half: true
 ```
 
-For detailed backend documentation and model conversion guides, see [docs/inference_backends.md](docs/inference_backends.md).
+**RKNN (RK3588)**:
+```yaml
+detector:
+  backend: rknn  # or rk3588
+  model_path: models/yolov8n.rknn
+  device: npu  # RK3588 NPU
+  input_size: [640, 640]
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+  warmup: true  # Recommended for NPU warmup
+```
+
+For detailed backend documentation, model conversion guides, and optimization tips, see [docs/inference_backends.md](docs/inference_backends.md).
 
 ## 🔧 Troubleshooting
 
