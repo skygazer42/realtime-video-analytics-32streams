@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, FastAPI, WebSocket
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from ..config import KafkaSinkConfig
@@ -86,15 +86,18 @@ def create_app(
 
     static_base = static_dir or Path(__file__).resolve().parent / "static"
     modern_index = static_base / "modern-dashboard.html"
-    index_file = modern_index if modern_index.exists() else static_base / "index.html"
+    index_file = static_base / "index.html"
     app.mount(
         "/static",
         StaticFiles(directory=str(static_base)),
         name="static",
     )
 
-    @app.get("/", response_class=FileResponse)
+    @app.get("/", response_class=Response)
     async def serve_index() -> Response:
+        if modern_index.exists():
+            # 始终跳转到新版仪表盘
+            return RedirectResponse(url="/static/modern-dashboard.html")
         return FileResponse(index_file)
 
     return app
