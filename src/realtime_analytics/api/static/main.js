@@ -59,11 +59,11 @@ let previousEvents = {}; // Track previous state for change detection
 // ==================== Status Management ====================
 function setStatus(connected) {
   if (connected) {
-    statusEl.innerHTML = '<span class="status-dot"></span>Connected';
+    statusEl.innerHTML = '<span class="status-dot"></span>已连接';
     statusEl.classList.remove("status--disconnected");
     statusEl.classList.add("status--connected");
   } else {
-    statusEl.innerHTML = '<span class="status-dot"></span>Disconnected';
+    statusEl.innerHTML = '<span class="status-dot"></span>未连接';
     statusEl.classList.remove("status--connected");
     statusEl.classList.add("status--disconnected");
   }
@@ -168,7 +168,12 @@ streamFilterSelect.addEventListener("change", (e) => {
   filterMode = e.target.value;
   renderStreams();
   if (notificationManager) {
-    notificationManager.info(`Filter changed to: ${e.target.options[e.target.selectedIndex].text}`, 2000);
+    const filterTexts = {
+      'all': '全部视频流',
+      'active': '仅活跃',
+      'inactive': '仅非活跃'
+    };
+    notificationManager.info(`过滤器已更改为：${filterTexts[filterMode] || filterMode}`, 2000);
   }
 });
 
@@ -183,8 +188,8 @@ function renderStreams() {
 
   if (!events.length) {
     const message = searchQuery || filterMode !== "all"
-      ? "No streams match the current filters"
-      : "Waiting for detections...";
+      ? "没有符合当前过滤条件的视频流"
+      : "等待检测数据...";
     streamsBody.innerHTML = `<tr class="empty"><td colspan="6">${message}</td></tr>`;
     return;
   }
@@ -202,8 +207,8 @@ function renderStreams() {
     // Determine status
     const isActive = event.tracks.length > 0;
     const statusBadge = isActive
-      ? '<span style="color: #4ade80;">● Active</span>'
-      : '<span style="color: #94a3b8;">○ Idle</span>';
+      ? '<span style="color: #4ade80;">● 活跃</span>'
+      : '<span style="color: #94a3b8;">○ 空闲</span>';
 
     row.innerHTML = `
       <td><strong>${event.stream}</strong></td>
@@ -242,22 +247,22 @@ function renderTracks() {
   if (selectedStream) {
     selectedStreamName.textContent = selectedStream;
   } else {
-    selectedStreamName.textContent = "No stream selected";
+    selectedStreamName.textContent = "未选择视频流";
   }
 
   if (!event) {
     tracksBody.innerHTML =
-      '<tr class="empty"><td colspan="5">Select a stream to view track details</td></tr>';
-    trackCount.textContent = "0 tracks";
+      '<tr class="empty"><td colspan="5">选择一个视频流以查看跟踪详情</td></tr>';
+    trackCount.textContent = "0 个目标";
     return;
   }
 
   const tracksLength = event.tracks.length;
-  trackCount.textContent = `${tracksLength} track${tracksLength !== 1 ? 's' : ''}`;
+  trackCount.textContent = `${tracksLength} 个目标`;
 
   if (!tracksLength) {
     tracksBody.innerHTML =
-      '<tr class="empty"><td colspan="5">No active tracks for this stream</td></tr>';
+      '<tr class="empty"><td colspan="5">此视频流没有活跃跟踪目标</td></tr>';
     return;
   }
 
@@ -292,7 +297,7 @@ function renderPreview() {
     previewImg.hidden = true;
     previewInfo.hidden = true;
     previewPlaceholder.hidden = false;
-    previewPlaceholder.textContent = "Select a stream to view the latest annotated frame with bounding boxes.";
+    previewPlaceholder.textContent = "选择一个视频流以查看带有边界框的最新标注帧。";
     return;
   }
 
@@ -313,7 +318,7 @@ function renderPreview() {
     previewImg.hidden = true;
     previewInfo.hidden = true;
     previewPlaceholder.hidden = false;
-    previewPlaceholder.textContent = "No frame with detections is available for this stream yet.";
+    previewPlaceholder.textContent = "此视频流还没有检测到的帧可用。";
   }
 }
 
@@ -343,14 +348,14 @@ function connectWebsocket() {
   ws.onopen = () => {
     setStatus(true);
     if (notificationManager) {
-      notificationManager.success('Connected to server', 3000);
+      notificationManager.success('已连接到服务器', 3000);
     }
   };
 
   ws.onclose = () => {
     setStatus(false);
     if (notificationManager) {
-      notificationManager.warning('Disconnected from server. Reconnecting...', 3000);
+      notificationManager.warning('已断开连接。正在重新连接...', 3000);
     }
     setTimeout(connectWebsocket, 2000); // 简单重连策略
   };
@@ -396,7 +401,7 @@ function connectWebsocket() {
           if (!window.lastNotifications[lastNotificationKey] ||
               now - window.lastNotifications[lastNotificationKey] > 30000) {
             notificationManager.info(
-              `${evt.tracks.length} objects detected in stream "${evt.stream}"`,
+              `在视频流 "${evt.stream}" 中检测到 ${evt.tracks.length} 个对象`,
               3000
             );
             window.lastNotifications[lastNotificationKey] = now;
@@ -507,8 +512,8 @@ function renderGridView(events) {
 
   if (!events.length) {
     const message = searchQuery || filterMode !== "all"
-      ? "No streams match the current filters"
-      : "Waiting for detections...";
+      ? "没有符合当前过滤条件的视频流"
+      : "等待检测数据...";
     streamsGridView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">${message}</div>`;
     return;
   }
@@ -576,7 +581,7 @@ function togglePause() {
         <polygon points="5 3 19 12 5 21 5 3"></polygon>
       </svg>
     `;
-    pauseToggleBtn.title = 'Resume updates (Space)';
+    pauseToggleBtn.title = '恢复更新 (空格键)';
   } else {
     pauseToggleBtn.classList.remove('active');
     pauseToggleBtn.innerHTML = `
@@ -585,7 +590,7 @@ function togglePause() {
         <rect x="14" y="4" width="4" height="16"></rect>
       </svg>
     `;
-    pauseToggleBtn.title = 'Pause updates (Space)';
+    pauseToggleBtn.title = '暂停更新 (空格键)';
   }
 }
 
@@ -883,8 +888,8 @@ function renderStreams() {
   // Table view rendering
   if (!events.length) {
     const message = searchQuery || filterMode !== "all"
-      ? "No streams match the current filters"
-      : "Waiting for detections...";
+      ? "没有符合当前过滤条件的视频流"
+      : "等待检测数据...";
     streamsBody.innerHTML = `<tr class="empty"><td colspan="6">${message}</td></tr>`;
     return;
   }
@@ -1002,7 +1007,7 @@ document.addEventListener('keydown', (e) => {
   // 'R' - Refresh data
   if (e.key.toLowerCase() === 'r') {
     if (notificationManager) {
-      notificationManager.info('Refreshing data...', 2000);
+      notificationManager.info('正在刷新数据...', 2000);
     }
     fetchInitialSnapshot();
   }
@@ -1012,7 +1017,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (notificationManager) {
       const streamCount = Object.keys(latestEvents).length;
-      notificationManager.info(`Total: ${streamCount} streams active`, 3000);
+      notificationManager.info(`总计：${streamCount} 个活跃视频流`, 3000);
     }
   }
 });
