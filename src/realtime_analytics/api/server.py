@@ -85,7 +85,8 @@ def create_app(
     app.include_router(router)
 
     static_base = static_dir or Path(__file__).resolve().parent / "static"
-    index_file = static_base / "index.html"
+    modern_index = static_base / "modern-dashboard.html"
+    index_file = modern_index if modern_index.exists() else static_base / "index.html"
     app.mount(
         "/static",
         StaticFiles(directory=str(static_base)),

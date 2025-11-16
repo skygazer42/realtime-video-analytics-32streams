@@ -215,17 +215,17 @@
         <!-- Frame Preview -->
         <div class="preview" id="preview-container">
           <div class="preview__placeholder" id="preview-placeholder">
-            选择一个视频流以查看带有边界框的最新标注帧。
+            请选择一个视频流来查看带边界框的最新标注帧。
           </div>
           <img id="stream-preview" alt="视频流预览" hidden />
-          <button id="fullscreen-btn" class="fullscreen-btn" title="全屏 (F)" hidden>
+          <button id="fullscreen-btn" class="fullscreen-btn" title="进入全屏 (F)" hidden>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
             </svg>
           </button>
           <div class="preview-info" id="preview-info" hidden>
-            <span id="preview-resolution">—</span>
-            <span id="preview-timestamp">—</span>
+            <span id="preview-resolution">--</span>
+            <span id="preview-timestamp">--</span>
           </div>
         </div>
 
@@ -391,5 +391,7 @@
     <script src="/static/charts.js"></script>
     <!-- Load main app -->
     <script src="/static/main.js"></script>
+    <!-- Load mock data generator for demo -->
+    <script src="/static/mock-data.js"></script>
   </body>
 </html>

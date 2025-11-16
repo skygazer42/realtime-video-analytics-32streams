@@ -1,0 +1,329 @@
+{
+  "total": 43,
+  "ok": 38,
+  "warning": 0,
+  "error": 5,
+  "files": [
+    {
+      "path": "check_encoding.py",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": [
+        "实时视频分析",
+        "活跃流数量",
+        "检测详情",
+        "等待检测数据",
+        "已连接",
+        "未连接"
+      ]
+    },
+    {
+      "path": "README.md",
+      "encoding": "Windows-1254",
+      "status": "error",
+      "message": "解码错误: 'charmap' codec can't decode byte 0x8e in position 4: character maps to <undefined>",
+      "chinese_found": []
+    },
+    {
+      "path": "README_CN.md",
+      "encoding": null,
+      "status": "error",
+      "message": "无法检测编码",
+      "chinese_found": [
+        "实时视频分析"
+      ]
+    },
+    {
+      "path": "simulate_data.py",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": [
+        "已连接"
+      ]
+    },
+    {
+      "path": ".claude\\settings.local.json",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "docs\\inference_backends.md",
+      "encoding": "Windows-1254",
+      "status": "error",
+      "message": "解码错误: 'charmap' codec can't decode byte 0x90 in position 959: character maps to <undefined>",
+      "chinese_found": []
+    },
+    {
+      "path": "docs\\kafka_workflow_cn.md",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "docs\\model_integration_cn.md",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "docs\\TEMPORAL_DETECTION.md",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "models\\README.md",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "scripts\\convert_temporal_model_to_onnx.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "scripts\\run_dashboard.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "scripts\\run_pipeline.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "scripts\\test_temporal_detector.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\config.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\detector.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\ffmpeg_simulator.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\pipeline.py",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\temporal_detector.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\tracker.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\video_stream.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\__init__.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\kafka_consumer.py",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\schemas.py",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\server.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\state.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\__init__.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\charts.js",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\enhancements.css",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\enterprise-dashboard.html",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\index.html",
+      "encoding": "Windows-1254",
+      "status": "error",
+      "message": "解码错误: 'charmap' codec can't decode byte 0x9e in position 166: character maps to <undefined>",
+      "chinese_found": [
+        "实时视频分析",
+        "活跃流数量",
+        "检测详情",
+        "等待检测数据"
+      ]
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\main.js",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": [
+        "等待检测数据"
+      ]
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\mock-data.js",
+      "encoding": "Windows-1254",
+      "status": "error",
+      "message": "解码错误: 'charmap' codec can't decode byte 0x8d in position 13: character maps to <undefined>",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\modern-dashboard.html",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\modern-ui.css",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\notifications.js",
+      "encoding": "Windows-1252",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\api\\static\\styles.css",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\sinks\\kafka_sink.py",
+      "encoding": "utf-8",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": [
+        "未连接"
+      ]
+    },
+    {
+      "path": "src\\realtime_analytics\\sinks\\__init__.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\telemetry\\metrics.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\telemetry\\__init__.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\utils\\frame_filter.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    },
+    {
+      "path": "src\\realtime_analytics\\utils\\__init__.py",
+      "encoding": "ascii",
+      "status": "ok",
+      "message": "OK",
+      "chinese_found": []
+    }
+  ]
+}

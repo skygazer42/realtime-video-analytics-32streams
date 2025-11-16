@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能监控指挥中心 - 企业级管理平台</title>
+
+    <!-- 引入现代字体和图标 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js和其他库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment/locale/zh-cn.js"></script>
+
+    <link rel="stylesheet" href="/static/modern-ui.css">
+
+    <style>
+        /* 额外的高级样式 */
+        .video-player {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .video-player:hover .video-controls {
+            opacity: 1;
+        }
+
+        .timeline-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 2rem 0;
+        }
+
+        .timeline-scrubber {
+            height: 60px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 8px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: var(--primary-color);
+            transition: all 0.3s;
+        }
+
+        .user-panel {
+            position: fixed;
+            top: 80px;
+            right: -400px;
+            width: 400px;
+            height: calc(100vh - 100px);
+            background: var(--card-bg);
+            border-left: 1px solid var(--border-color);
+            transition: right 0.3s ease;
+            z-index: 998;
+            overflow-y: auto;
+        }
+
+        .user-panel.open {
+            right: 0;
+        }
+
+        .report-builder {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            padding: 2rem;
+        }
+
+        .report-options {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .report-preview {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            color: #333;
+            min-height: 600px;
+        }
+
+        .ai-insights {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .camera-matrix {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            padding: 2px;
+        }
+
+        .matrix-cell {
+            aspect-ratio: 16/9;
+            background: #111;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .matrix-cell:hover {
+            transform: scale(1.5);
+            z-index: 10;
+            border: 2px solid var(--primary-color);
+        }
+
+        .matrix-cell.selected {
+            border: 2px solid var(--success-color);
+        }
+
+        .command-center {
+            display: grid;
+            grid-template-columns: 1fr 3fr 1fr;
+            gap: 2rem;
+            height: calc(100vh - 100px);
+            padding: 2rem;
+        }
+
+        .left-panel, .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .main-display {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .alert-priority {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .priority-high {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+        }
+
+        .priority-medium {
+            background: rgba(255, 170, 0, 0.2);
+            color: #ffaa00;
+        }
+
+        .priority-low {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <!-- 高级头部导航 -->
+    <header class="pro-header">
+        <div class="header-grid">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>智能监控指挥中心</h1>
+                    <span>AI驱动 · 全域感知 · 智能决策</span>
+                </div>
+            </div>
+
+            <nav style="display: flex; gap: 2rem; align-items: center; justify-content: center;">
+                <a href="#" class="nav-link active" onclick="showSection('monitoring')">
+                    <i class="fas fa-tv"></i> 实时监控
+                </a>
+                <a href="#" class="nav-link" onclick="showSection('playback')">
+                    <i class="fas fa-history"></i> 回放查询
+                </a>
+                <a href="#" class="nav-link" onclick="showSection('analytics')">
+                    <i class="fas fa-chart-line"></i> 数据分析
+                </a>
+                <a href="#" class="nav-link" onclick="showSection('reports')">
+                    <i class="fas fa-file-alt"></i> 报表中心
+                </a>
+                <a href="#" class="nav-link" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i> 系统设置
+                </a>
+            </nav>
+
+            <div class="control-panel">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-right: 1rem;">
+                    <span style="color: var(--text-secondary);">管理员</span>
+                    <span style="color: var(--primary-color); font-weight: 600;">张三</span>
+                </div>
+                <button class="control-btn" onclick="toggleUserPanel()">
+                    <i class="fas fa-user-circle"></i>
+                </button>
+                <button class="control-btn" onclick="showNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge">5</span>
+                </button>
+                <button class="control-btn" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 实时监控模块 -->
+    <section id="monitoring-section" class="command-center">
+        <!-- 左侧面板：摄像头列表和快速控制 -->
+        <div class="left-panel">
+            <!-- 摄像头分组 -->
+            <div class="chart-container-pro">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
+                    <i class="fas fa-video"></i> 摄像头分组
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="chart-btn active" onclick="filterCameras('all')">
+                        全部 (32)
+                    </button>
+                    <button class="chart-btn" onclick="filterCameras('entrance')">
+                        <i class="fas fa-door-open"></i> 出入口 (8)
+                    </button>
+                    <button class="chart-btn" onclick="filterCameras('parking')">
+                        <i class="fas fa-parking"></i> 停车场 (6)
+                    </button>
+                    <button class="chart-btn" onclick="filterCameras('corridor')">
+                        <i class="fas fa-road"></i> 走廊 (10)
+                    </button>
+                    <button class="chart-btn" onclick="filterCameras('outdoor')">
+                        <i class="fas fa-tree"></i> 室外 (8)
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI智能分析 -->
+            <div class="ai-insights">
+                <h3 style="color: white; margin-bottom: 1rem;">
+                    <i class="fas fa-brain"></i> AI 智能洞察
+                </h3>
+                <div class="insight-item">
+                    <i class="fas fa-exclamation-triangle" style="color: #ffaa00;"></i>
+                    <span style="color: white; font-size: 0.875rem;">
+                        检测到B区人流量异常增加
+                    </span>
+                </div>
+                <div class="insight-item">
+                    <i class="fas fa-check-circle" style="color: #00ff88;"></i>
+                    <span style="color: white; font-size: 0.875rem;">
+                        所有安全通道状态正常
+                    </span>
+                </div>
+                <div class="insight-item">
+                    <i class="fas fa-info-circle" style="color: #00d4ff;"></i>
+                    <span style="color: white; font-size: 0.875rem;">
+                        建议增加巡逻频次
+                    </span>
+                </div>
+            </div>
+
+            <!-- 快速操作 -->
+            <div class="chart-container-pro">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
+                    <i class="fas fa-bolt"></i> 快速操作
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <button class="chart-btn" onclick="startRecordingAll()">
+                        <i class="fas fa-record-vinyl"></i> 全部录制
+                    </button>
+                    <button class="chart-btn" onclick="takeSnapshot()">
+                        <i class="fas fa-camera"></i> 快照
+                    </button>
+                    <button class="chart-btn" onclick="enableAlerts()">
+                        <i class="fas fa-bell"></i> 告警
+                    </button>
+                    <button class="chart-btn" onclick="exportVideo()">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间主显示区 -->
+        <div class="main-display">
+            <!-- 主视频显示 -->
+            <div style="background: var(--card-bg); border-radius: 12px; padding: 1rem; flex: 1;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3 style="color: var(--primary-color);">
+                        <i class="fas fa-expand"></i> 主画面 - 摄像头_01
+                    </h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="chart-btn" onclick="toggleFullscreen()">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </button>
+                        <button class="chart-btn" onclick="togglePIP()">
+                            <i class="fas fa-clone"></i>
+                        </button>
+                        <select class="chart-btn" onchange="switchMainCamera(this.value)">
+                            <option>摄像头_01</option>
+                            <option>摄像头_02</option>
+                            <option>摄像头_03</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="video-player" style="height: 400px;">
+                    <video id="main-video" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <canvas id="detection-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                    <div class="video-controls">
+                        <button class="control-btn"><i class="fas fa-play"></i></button>
+                        <button class="control-btn"><i class="fas fa-pause"></i></button>
+                        <button class="control-btn"><i class="fas fa-stop"></i></button>
+                        <input type="range" style="flex: 1;" min="0" max="100" value="50">
+                        <button class="control-btn"><i class="fas fa-volume-up"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 多画面矩阵 -->
+            <div style="background: var(--card-bg); border-radius: 12px; padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3 style="color: var(--primary-color);">
+                        <i class="fas fa-th"></i> 监控矩阵
+                    </h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="chart-btn active" onclick="setMatrix(4)">2×2</button>
+                        <button class="chart-btn" onclick="setMatrix(9)">3×3</button>
+                        <button class="chart-btn" onclick="setMatrix(16)">4×4</button>
+                        <button class="chart-btn" onclick="setMatrix(32)">8×4</button>
+                    </div>
+                </div>
+                <div class="camera-matrix" id="camera-matrix">
+                    <!-- 动态生成摄像头矩阵 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板：告警和事件 -->
+        <div class="right-panel">
+            <!-- 实时告警 -->
+            <div class="chart-container-pro" style="flex: 1; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3 style="color: #ff4444;">
+                        <i class="fas fa-exclamation-triangle"></i> 实时告警
+                    </h3>
+                    <span style="background: #ff4444; color: white; padding: 2px 8px; border-radius: 10px;">12</span>
+                </div>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <div class="alert-item" style="border-left: 3px solid #ff4444;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="alert-priority priority-high">紧急</span>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">2分钟前</span>
+                        </div>
+                        <div style="margin-top: 0.5rem;">
+                            <strong>摄像头_15</strong> - 检测到未授权进入
+                        </div>
+                    </div>
+                    <div class="alert-item" style="border-left: 3px solid #ffaa00;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="alert-priority priority-medium">中等</span>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">5分钟前</span>
+                        </div>
+                        <div style="margin-top: 0.5rem;">
+                            <strong>摄像头_08</strong> - 异常聚集
+                        </div>
+                    </div>
+                    <div class="alert-item" style="border-left: 3px solid #00d4ff;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="alert-priority priority-low">低</span>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">10分钟前</span>
+                        </div>
+                        <div style="margin-top: 0.5rem;">
+                            <strong>摄像头_22</strong> - 画面遮挡
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 事件日志 -->
+            <div class="chart-container-pro" style="flex: 1;">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
+                    <i class="fas fa-list"></i> 事件日志
+                </h3>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="font-size: 0.875rem;">
+                            <span style="color: var(--text-secondary);">20:15:32</span>
+                            <span style="margin-left: 0.5rem;">系统自检完成</span>
+                        </div>
+                    </div>
+                    <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="font-size: 0.875rem;">
+                            <span style="color: var(--text-secondary);">20:14:15</span>
+                            <span style="margin-left: 0.5rem;">用户登录: 张三</span>
+                        </div>
+                    </div>
+                    <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="font-size: 0.875rem;">
+                            <span style="color: var(--text-secondary);">20:10:00</span>
+                            <span style="margin-left: 0.5rem;">录像存档完成</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统资源 -->
+            <div class="chart-container-pro">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
+                    <i class="fas fa-server"></i> 系统资源
+                </h3>
+                <div style="display: grid; gap: 0.75rem;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <span style="font-size: 0.875rem;">CPU</span>
+                            <span style="font-size: 0.875rem; color: var(--primary-color);">65%</span>
+                        </div>
+                        <div style="height: 4px; background: var(--border-color); border-radius: 2px;">
+                            <div style="width: 65%; height: 100%; background: var(--primary-color); border-radius: 2px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <span style="font-size: 0.875rem;">GPU</span>
+                            <span style="font-size: 0.875rem; color: var(--success-color);">85%</span>
+                        </div>
+                        <div style="height: 4px; background: var(--border-color); border-radius: 2px;">
+                            <div style="width: 85%; height: 100%; background: var(--success-color); border-radius: 2px;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <span style="font-size: 0.875rem;">内存</span>
+                            <span style="font-size: 0.875rem; color: var(--warning-color);">45%</span>
+                        </div>
+                        <div style="height: 4px; background: var(--border-color); border-radius: 2px;">
+                            <div style="width: 45%; height: 100%; background: var(--warning-color); border-radius: 2px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 历史回放模块 -->
+    <section id="playback-section" style="display: none; padding: 2rem;">
+        <div class="chart-container-pro">
+            <h2 style="color: var(--primary-color); margin-bottom: 2rem;">
+                <i class="fas fa-history"></i> 历史回放查询
+            </h2>
+
+            <!-- 查询条件 -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">开始时间</label>
+                    <input type="datetime-local" class="chart-btn" style="width: 100%; padding: 0.75rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">结束时间</label>
+                    <input type="datetime-local" class="chart-btn" style="width: 100%; padding: 0.75rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">摄像头</label>
+                    <select class="chart-btn" style="width: 100%; padding: 0.75rem;">
+                        <option>全部摄像头</option>
+                        <option>摄像头_01</option>
+                        <option>摄像头_02</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">事件类型</label>
+                    <select class="chart-btn" style="width: 100%; padding: 0.75rem;">
+                        <option>全部事件</option>
+                        <option>人员检测</option>
+                        <option>车辆检测</option>
+                        <option>异常告警</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="chart-btn active" style="padding: 1rem 2rem; font-size: 1rem;">
+                <i class="fas fa-search"></i> 查询录像
+            </button>
+        </div>
+
+        <!-- 时间轴 -->
+        <div class="timeline-container">
+            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">录像时间轴</h3>
+            <div class="timeline-scrubber" id="timeline">
+                <div class="timeline-marker" style="left: 50%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                <span>00:00</span>
+                <span>06:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+                <span>24:00</span>
+            </div>
+        </div>
+
+        <!-- 回放视频网格 -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 2rem;">
+            <div class="chart-container-pro">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">摄像头_01 回放</h3>
+                <div class="video-player" style="height: 300px;">
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-secondary);">
+                        <i class="fas fa-play-circle" style="font-size: 3rem;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container-pro">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">摄像头_02 回放</h3>
+                <div class="video-player" style="height: 300px;">
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-secondary);">
+                        <i class="fas fa-play-circle" style="font-size: 3rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 报表中心 -->
+    <section id="reports-section" style="display: none;">
+        <div class="report-builder">
+            <!-- 报表选项 -->
+            <div class="report-options">
+                <h3 style="color: var(--primary-color); margin-bottom: 1.5rem;">
+                    <i class="fas fa-file-alt"></i> 报表配置
+                </h3>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">报表类型</label>
+                    <select class="chart-btn" style="width: 100%; padding: 0.75rem;">
+                        <option>日报表</option>
+                        <option>周报表</option>
+                        <option>月报表</option>
+                        <option>自定义</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">包含内容</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" checked> 检测统计
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" checked> 告警分析
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" checked> 系统性能
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox"> 事件详情
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">导出格式</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <button class="chart-btn active">PDF</button>
+                        <button class="chart-btn">Excel</button>
+                        <button class="chart-btn">Word</button>
+                        <button class="chart-btn">CSV</button>
+                    </div>
+                </div>
+
+                <button class="chart-btn active" style="width: 100%; padding: 1rem; font-size: 1rem;">
+                    <i class="fas fa-download"></i> 生成报表
+                </button>
+            </div>
+
+            <!-- 报表预览 -->
+            <div class="report-preview">
+                <h1 style="text-align: center; margin-bottom: 2rem;">智能监控系统运行报表</h1>
+                <p style="text-align: center; color: #666; margin-bottom: 2rem;">
+                    报告期间：2024年11月16日
+                </p>
+
+                <h2 style="margin-bottom: 1rem;">一、概览</h2>
+                <ul style="line-height: 1.8;">
+                    <li>活跃摄像头：32个</li>
+                    <li>总检测数量：12,584次</li>
+                    <li>告警事件：47起</li>
+                    <li>系统运行时间：99.8%</li>
+                </ul>
+
+                <h2 style="margin-top: 2rem; margin-bottom: 1rem;">二、检测统计</h2>
+                <canvas id="report-chart" height="200"></canvas>
+
+                <h2 style="margin-top: 2rem; margin-bottom: 1rem;">三、重要事件</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">时间</th>
+                            <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">地点</th>
+                            <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">事件</th>
+                            <th style="padding: 0.5rem; text-align: left; border: 1px solid #ddd;">处理状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid #ddd;">09:15</td>
+                            <td style="padding: 0.5rem; border: 1px solid #ddd;">摄像头_15</td>
+                            <td style="padding: 0.5rem; border: 1px solid #ddd;">异常聚集</td>
+                            <td style="padding: 0.5rem; border: 1px solid #ddd;">已处理</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- 用户权限面板 -->
+    <div class="user-panel" id="user-panel">
+        <div style="padding: 2rem;">
+            <h2 style="color: var(--primary-color); margin-bottom: 2rem;">
+                <i class="fas fa-user-shield"></i> 用户权限管理
+            </h2>
+
+            <!-- 用户信息 -->
+            <div class="chart-container-pro" style="margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--gradient-2); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-user" style="color: white; font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <h3 style="color: var(--text-primary);">张三</h3>
+                        <span style="color: var(--text-secondary);">系统管理员</span>
+                    </div>
+                </div>
+                <div style="display: grid; gap: 0.5rem; font-size: 0.875rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">用户ID:</span>
+                        <span>ADM001</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">最后登录:</span>
+                        <span>2024-11-16 20:00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">登录IP:</span>
+                        <span>192.168.1.100</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 权限设置 -->
+            <div class="chart-container-pro">
+                <h3 style="color: var(--primary-color); margin-bottom: 1rem;">权限设置</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>实时监控</span>
+                        <input type="checkbox" checked>
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>历史回放</span>
+                        <input type="checkbox" checked>
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>数据分析</span>
+                        <input type="checkbox" checked>
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>报表导出</span>
+                        <input type="checkbox" checked>
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>系统管理</span>
+                        <input type="checkbox" checked>
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>用户管理</span>
+                        <input type="checkbox" checked>
+                    </label>
+                </div>
+            </div>
+
+            <button class="chart-btn active" style="width: 100%; padding: 1rem; margin-top: 1rem;">
+                保存设置
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initCameraMatrix();
+            initReportChart();
+            simulateRealTimeData();
+        });
+
+        // 导航样式
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.style.cssText = `
+                color: var(--text-secondary);
+                text-decoration: none;
+                transition: color 0.3s;
+                cursor: pointer;
+            `;
+            link.addEventListener('mouseover', () => {
+                if (!link.classList.contains('active')) {
+                    link.style.color = 'var(--primary-color)';
+                }
+            });
+            link.addEventListener('mouseout', () => {
+                if (!link.classList.contains('active')) {
+                    link.style.color = 'var(--text-secondary)';
+                }
+            });
+        });
+
+        // 通知徽章样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .notification-badge {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: #ff4444;
+                color: white;
+                font-size: 0.625rem;
+                padding: 2px 4px;
+                border-radius: 10px;
+                min-width: 16px;
+                text-align: center;
+            }
+            .nav-link.active {
+                color: var(--primary-color) !important;
+                border-bottom: 2px solid var(--primary-color);
+                padding-bottom: 0.5rem;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 切换模块
+        function showSection(section) {
+            // 隐藏所有模块
+            document.getElementById('monitoring-section').style.display = 'none';
+            document.getElementById('playback-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'none';
+
+            // 显示选中模块
+            if (section === 'monitoring') {
+                document.getElementById('monitoring-section').style.display = 'grid';
+            } else if (section === 'playback') {
+                document.getElementById('playback-section').style.display = 'block';
+            } else if (section === 'reports') {
+                document.getElementById('reports-section').style.display = 'block';
+            }
+
+            // 更新导航样式
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.onclick.toString().includes(section)) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        // 用户面板
+        function toggleUserPanel() {
+            const panel = document.getElementById('user-panel');
+            panel.classList.toggle('open');
+        }
+
+        // 初始化摄像头矩阵
+        function initCameraMatrix() {
+            const matrix = document.getElementById('camera-matrix');
+            for (let i = 1; i <= 16; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.innerHTML = `
+                    <div style="position: absolute; top: 5px; left: 5px; color: #00d4ff; font-size: 0.75rem;">
+                        CAM ${String(i).padStart(2, '0')}
+                    </div>
+                    <div style="position: absolute; bottom: 5px; right: 5px; color: #00ff88; font-size: 0.625rem;">
+                        <i class="fas fa-circle"></i> REC
+                    </div>
+                `;
+                cell.onclick = () => selectCamera(i);
+                matrix.appendChild(cell);
+            }
+        }
+
+        // 选择摄像头
+        function selectCamera(id) {
+            document.querySelectorAll('.matrix-cell').forEach(cell => {
+                cell.classList.remove('selected');
+            });
+            event.target.closest('.matrix-cell').classList.add('selected');
+        }
+
+        // 初始化报表图表
+        function initReportChart() {
+            const ctx = document.getElementById('report-chart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                        datasets: [{
+                            label: '检测数量',
+                            data: [120, 80, 150, 280, 320, 250],
+                            backgroundColor: 'rgba(0, 212, 255, 0.5)',
+                            borderColor: '#00d4ff',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 模拟实时数据
+        function simulateRealTimeData() {
+            setInterval(() => {
+                // 随机更新告警数
+                const badges = document.querySelectorAll('.notification-badge');
+                badges.forEach(badge => {
+                    const current = parseInt(badge.textContent);
+                    if (Math.random() > 0.7) {
+                        badge.textContent = current + 1;
+                    }
+                });
+
+                // 随机更新摄像头状态
+                const cells = document.querySelectorAll('.matrix-cell');
+                const randomCell = cells[Math.floor(Math.random() * cells.length)];
+                if (Math.random() > 0.8) {
+                    randomCell.style.border = '2px solid #ff4444';
+                    setTimeout(() => {
+                        randomCell.style.border = '';
+                    }, 2000);
+                }
+            }, 3000);
+        }
+
+        // 其他功能函数
+        function filterCameras(group) {
+            console.log('Filtering cameras:', group);
+        }
+
+        function startRecordingAll() {
+            alert('开始录制所有摄像头');
+        }
+
+        function takeSnapshot() {
+            alert('快照已保存');
+        }
+
+        function enableAlerts() {
+            alert('告警已启用');
+        }
+
+        function exportVideo() {
+            alert('开始导出视频');
+        }
+
+        function showNotifications() {
+            alert('显示通知中心');
+        }
+
+        function logout() {
+            if (confirm('确定要退出系统吗？')) {
+                alert('已退出登录');
+            }
+        }
+    </script>
+</body>
+</html>

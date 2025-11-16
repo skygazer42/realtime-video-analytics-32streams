@@ -6,7 +6,10 @@
       "Bash(python -m pip:*)",
       "Bash(python scripts/run_dashboard.py:*)",
       "Bash(curl:*)",
-      "Bash(python -m json.tool:*)"
+      "Bash(python -m json.tool:*)",
+      "Bash(pip install:*)",
+      "Bash(test:*)",
+      "Bash(python check_encoding.py:*)"
     ],
     "deny": [],
     "ask": []

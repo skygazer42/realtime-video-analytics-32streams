@@ -59,11 +59,11 @@ let previousEvents = {}; // Track previous state for change detection
 // ==================== Status Management ====================
 function setStatus(connected) {
   if (connected) {
-    statusEl.innerHTML = '<span class="status-dot"></span>已连接';
+    statusEl.innerHTML = '<span class="status-dot"></span>实时连接';
     statusEl.classList.remove("status--disconnected");
     statusEl.classList.add("status--connected");
   } else {
-    statusEl.innerHTML = '<span class="status-dot"></span>未连接';
+    statusEl.innerHTML = '<span class="status-dot"></span>已断开';
     statusEl.classList.remove("status--connected");
     statusEl.classList.add("status--disconnected");
   }
@@ -170,10 +170,10 @@ streamFilterSelect.addEventListener("change", (e) => {
   if (notificationManager) {
     const filterTexts = {
       'all': '全部视频流',
-      'active': '仅活跃',
-      'inactive': '仅非活跃'
+      'active': '仅显示活跃流',
+      'inactive': '仅显示非活跃流'
     };
-    notificationManager.info(`过滤器已更改为：${filterTexts[filterMode] || filterMode}`, 2000);
+    notificationManager.info(`过滤器已切换为：${filterTexts[filterMode] || filterMode}`, 2000);
   }
 });
 
@@ -188,7 +188,7 @@ function renderStreams() {
 
   if (!events.length) {
     const message = searchQuery || filterMode !== "all"
-      ? "没有符合当前过滤条件的视频流"
+      ? "暂无符合当前过滤条件的视频流"
       : "等待检测数据...";
     streamsBody.innerHTML = `<tr class="empty"><td colspan="6">${message}</td></tr>`;
     return;
@@ -348,7 +348,7 @@ function connectWebsocket() {
   ws.onopen = () => {
     setStatus(true);
     if (notificationManager) {
-      notificationManager.success('已连接到服务器', 3000);
+      notificationManager.success('实时连接到服务器', 3000);
     }
   };
 
@@ -512,7 +512,7 @@ function renderGridView(events) {
 
   if (!events.length) {
     const message = searchQuery || filterMode !== "all"
-      ? "没有符合当前过滤条件的视频流"
+      ? "暂无符合当前过滤条件的视频流"
       : "等待检测数据...";
     streamsGridView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">${message}</div>`;
     return;
@@ -888,7 +888,7 @@ function renderStreams() {
   // Table view rendering
   if (!events.length) {
     const message = searchQuery || filterMode !== "all"
-      ? "没有符合当前过滤条件的视频流"
+      ? "暂无符合当前过滤条件的视频流"
       : "等待检测数据...";
     streamsBody.innerHTML = `<tr class="empty"><td colspan="6">${message}</td></tr>`;
     return;
