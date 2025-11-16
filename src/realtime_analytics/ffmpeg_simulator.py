@@ -160,7 +160,8 @@ class FFmpegStreamSimulator:
                 "Ignoring credentials in stream url for ffmpeg simulator on stream '%s'",
                 self.stream.name,
             )
-        listen = parsed._replace(netloc=netloc, username=None, password=None)
+        # ParseResult doesn't accept username/password in _replace; override netloc only.
+        listen = parsed._replace(netloc=netloc)
         return urlunparse(listen)
 
 

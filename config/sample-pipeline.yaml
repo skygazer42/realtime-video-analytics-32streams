@@ -51,7 +51,7 @@ streams:
 
 # 默认检测器（streams 未设置 detector_id 时使用）
 detector:
-  model_path: yolov8n.pt       # 可改为 models/yolo/xxx.pt
+  model_path: models/yolo/yolov8n.pt  # 使用本地轻量模型
   device: auto                 # auto / cpu / cuda:0 ...
   backend: ultralytics         # ultralytics / tensorrt
   confidence_threshold: 0.5          # 置信度阈值
@@ -68,9 +68,9 @@ detectors:
     device: cuda:0
     confidence_threshold: 0.45
   parking:
-    backend: tensorrt
-    model_path: models/tensorrt/parking_fp16.engine
-    input_size: [640, 640]
+    backend: ultralytics
+    model_path: models/yolo/yolov8n.pt
+    device: cuda:0
     confidence_threshold: 0.5
     iou_threshold: 0.5
 

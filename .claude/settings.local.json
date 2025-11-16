@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(docker build:*)",
+      "Bash(python -m pip:*)",
+      "Bash(python scripts/run_dashboard.py:*)",
+      "Bash(curl:*)",
+      "Bash(python -m json.tool:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
