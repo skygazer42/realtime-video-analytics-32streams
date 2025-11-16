@@ -3,19 +3,20 @@
 # Requirements: ffmpeg in PATH; allow app through Windows firewall if needed.
 
 param(
-    [string]$Input = "data\samples\demo.mp4",
+    [string]$Input = "",
     [int]$Streams = 4,
-    [string]$Host = "0.0.0.0",
+    [string]$ListenHost = "0.0.0.0",
     [int]$Port = 8554
 )
 
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+if ([string]::IsNullOrWhiteSpace($Input)) {
+    $Input = Join-Path $scriptDir "..\data\samples\demo.mp4"
+}
+$Input = (Resolve-Path -Path $Input -ErrorAction Stop).Path
+
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
     Write-Error "ffmpeg not found in PATH. Please install ffmpeg first."
-    exit 1
-}
-
-if (-not (Test-Path $Input)) {
-    Write-Error "Input file not found: $Input"
     exit 1
 }
 
@@ -33,7 +34,7 @@ for ($i = 1; $i -le $Streams; $i++) {
         "-rtsp_transport", "tcp",
         "-muxdelay", "0.1",
         "-listen", "1",
-        "rtsp://$Host`:$Port/$name"
+        "rtsp://$ListenHost`:$Port/$name"
     )
     $proc = Start-Process -FilePath "ffmpeg" -ArgumentList $args -PassThru -WindowStyle Hidden
     $procs += $proc
@@ -42,7 +43,7 @@ for ($i = 1; $i -le $Streams; $i++) {
 Write-Host "RTSP endpoints:"
 for ($i = 1; $i -le $Streams; $i++) {
     $name = ("stream{0:D2}" -f $i)
-    Write-Host ("  rtsp://{0}:{1}/{2}" -f $Host, $Port, $name)
+    Write-Host ("  rtsp://{0}:{1}/{2}" -f $ListenHost, $Port, $name)
 }
 
 Write-Host "Press Enter to stop all streams..."
