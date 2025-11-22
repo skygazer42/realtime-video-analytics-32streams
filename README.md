@@ -94,11 +94,11 @@ docker compose up pipeline
 docker compose up dashboard
 ```
 
-#### Quick 4-stream local demo
-See `docs/local_rtsp_demo.md` for a step-by-step guide (PowerShell and bash) that spins up 4 RTSP streams from the bundled sample video and runs the pipeline in Docker using `host.docker.internal`.
+#### Quick 4-stream demo
+`docs/local_rtsp_demo.md` — quickest way to see detections (PowerShell/bash, 4 RTSP streams from the bundled video, Docker pipeline).
 
-#### Deployment guide
-Full end-to-end setup (build, RTSP simulators, Kafka optional, pipeline, dashboard, exports): `docs/deployment.md`.
+#### Full deployment
+`docs/deployment.md` — end-to-end steps: build image, start simulators, (optional) Kafka, run pipeline + dashboard, export data.
 
 Mounted volumes:
 
