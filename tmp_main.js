@@ -28,6 +28,12 @@ const previewResolution = document.getElementById("preview-resolution");
 const previewTimestamp = document.getElementById("preview-timestamp");
 const selectedStreamName = document.getElementById("selected-stream-name");
 const trackCount = document.getElementById("track-count");
+const emptyState = document.getElementById("empty-state");
+const livePill = document.getElementById("live-pill");
+const liveLabel = document.getElementById("live-label");
+const liveStreamCount = document.getElementById("live-stream-count");
+const liveTrackCount = document.getElementById("live-track-count");
+const lastUpdateEl = document.getElementById("last-update");
 
 // Statistics elements
 const statTotalStreams = document.getElementById("stat-total-streams");

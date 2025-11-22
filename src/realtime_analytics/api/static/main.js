@@ -61,6 +61,7 @@ let sortDirection = "asc";
 let currentStreamIndex = 0;
 let chartsVisible = true;
 let previousEvents = {}; // Track previous state for change detection
+let lastUpdateTs = null;
 
 // ==================== Status Management ====================
 function setStatus(connected) {
@@ -73,6 +74,12 @@ function setStatus(connected) {
     statusEl.classList.remove("status--connected");
     statusEl.classList.add("status--disconnected");
   }
+  if (livePill) {
+    livePill.className = `live-pill ${connected ? "status--connected" : "status--disconnected"}`;
+  }
+  if (liveLabel) {
+    liveLabel.textContent = connected ? "Connected" : "Disconnected";
+  }
 }
 
 // ==================== Statistics Update ====================
@@ -80,9 +87,16 @@ function updateStatistics() {
   const events = Object.values(latestEvents);
   const totalStreams = events.length;
   const totalTracks = events.reduce((sum, evt) => sum + evt.tracks.length, 0);
+  const latestTs = events.length ? Math.max(...events.map(evt => new Date(evt.received_at).getTime())) : null;
 
   statTotalStreams.textContent = totalStreams;
   statTotalTracks.textContent = totalTracks;
+  if (liveStreamCount) liveStreamCount.textContent = totalStreams;
+  if (liveTrackCount) liveTrackCount.textContent = totalTracks;
+  if (latestTs) {
+    lastUpdateTs = latestTs;
+    if (lastUpdateEl) lastUpdateEl.textContent = new Date(latestTs).toLocaleTimeString();
+  }
 
   // Calculate detections per second
   const now = Date.now();
@@ -988,6 +1002,22 @@ function renderPreview() {
   }
 }
 
+// ==================== Live overlay helpers ====================
+function updateLiveOverlay() {
+  const events = applyFilters(Object.values(latestEvents));
+  const streamCount = events.length;
+  const trackCountTotal = events.reduce((sum, evt) => sum + evt.tracks.length, 0);
+  if (liveStreamCount) liveStreamCount.textContent = streamCount;
+  if (liveTrackCount) liveTrackCount.textContent = trackCountTotal;
+  if (emptyState) emptyState.hidden = streamCount !== 0;
+  const latestTs = events.length ? Math.max(...events.map(evt => new Date(evt.received_at).getTime())) : null;
+  if (latestTs && lastUpdateEl) {
+    lastUpdateEl.textContent = new Date(latestTs).toLocaleTimeString();
+  }
+}
+
+setInterval(updateLiveOverlay, 1500);
+
 // ==================== Charts Toggle ====================
 const chartsToggleBtn = document.getElementById('charts-toggle');
 const chartsContainer = document.getElementById('charts-container');
@@ -1044,6 +1074,18 @@ setInterval(() => {
     updateStatistics();
   }
 }, 5000);
+
+// Enhance connection indicator to同步 live bar
+const __origSetStatus = setStatus;
+setStatus = function(connected) {
+  __origSetStatus(connected);
+  if (livePill) {
+    livePill.className = `live-pill ${connected ? "status--connected" : "status--disconnected"}`;
+  }
+  if (liveLabel) {
+    liveLabel.textContent = connected ? "Connected" : "Disconnected";
+  }
+};
 
 setStatus(false); // 初始展示断开状态
 fetchInitialSnapshot(); // 获取初始快照
