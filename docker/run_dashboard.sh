@@ -2,6 +2,10 @@
 set -euo pipefail
 
 CONFIG_PATH="${DASHBOARD_CONFIG:-/app/config/sample-pipeline.yaml}"
+if [[ ! -f "${CONFIG_PATH}" && -f "/data/config/pipeline.yaml" ]]; then
+  CONFIG_PATH="/data/config/pipeline.yaml"
+fi
+
 HOST="${DASHBOARD_HOST:-0.0.0.0}"
 PORT="${DASHBOARD_PORT:-8080}"
 
