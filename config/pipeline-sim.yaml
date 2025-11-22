@@ -1,0 +1,38 @@
+---
+# Self-contained config that uses the built-in ffmpeg simulator and bundled YOLOv8n model.
+
+max_concurrent_streams: 4
+stats_interval_seconds: 10
+
+streams:
+  - name: sim-1
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+    ffmpeg_simulator:
+      enabled: false
+
+# Default detector shared by streams
+detector:
+  model_path: /app/models/yolo/yolov8n.pt
+  device: cpu            # keep deterministic during CI/local tests
+  backend: ultralytics
+  confidence_threshold: 0.35
+  iou_threshold: 0.5
+  half: false
+  warmup: false
+
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+kafka:
+  enabled: false
+
+prometheus:
+  enabled: false
