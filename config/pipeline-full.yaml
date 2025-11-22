@@ -1,0 +1,73 @@
+---
+# Complete config with 4 streams + Kafka + Dashboard support
+
+max_concurrent_streams: 32
+stats_interval_seconds: 10
+
+streams:
+  - name: stream-01
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+  - name: stream-02
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+  - name: stream-03
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+  - name: stream-04
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+# Default detector configuration
+detector:
+  model_path: /app/models/yolo/yolov8n.pt
+  device: cpu                # cpu or cuda:0 for GPU
+  backend: ultralytics
+  confidence_threshold: 0.35
+  iou_threshold: 0.5
+  half: false
+  warmup: true
+
+# Object tracker
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+# Kafka for Dashboard communication
+kafka:
+  enabled: true
+  bootstrap_servers: kafka:9092    # kafka service name in docker-compose
+  topic: analytics.events
+  linger_ms: 10
+  max_batch_size: 16384
+  include_frames: true              # Send frames to dashboard
+  frame_quality: 75
+  max_frame_rate_per_stream: 2      # Limit to 2 FPS per stream
+
+# Prometheus metrics
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5

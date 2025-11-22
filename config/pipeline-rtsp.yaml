@@ -1,0 +1,44 @@
+---
+# 4-stream RTSP test against local ffmpeg simulators started by scripts/rtsp-multistream.ps1 (Ports 8554-8557).
+
+max_concurrent_streams: 4
+stats_interval_seconds: 10
+
+streams:
+  - name: cam01
+    url: rtsp://host.docker.internal:8554/stream01
+    target_fps: 12
+    warmup_seconds: 0.5
+  - name: cam02
+    url: rtsp://host.docker.internal:8555/stream02
+    target_fps: 12
+    warmup_seconds: 0.5
+  - name: cam03
+    url: rtsp://host.docker.internal:8556/stream03
+    target_fps: 12
+    warmup_seconds: 0.5
+  - name: cam04
+    url: rtsp://host.docker.internal:8557/stream04
+    target_fps: 12
+    warmup_seconds: 0.5
+
+detector:
+  model_path: /app/models/yolo/yolov8n.pt
+  device: cpu
+  backend: ultralytics
+  confidence_threshold: 0.35
+  iou_threshold: 0.5
+  half: false
+  warmup: false
+
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+kafka:
+  enabled: false
+
+prometheus:
+  enabled: false

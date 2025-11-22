@@ -6,7 +6,7 @@ param(
     [string]$Input = "",
     [int]$Streams = 4,
     [string]$ListenHost = "0.0.0.0",
-    [int]$Port = 8554
+    [int]$PortStart = 8554  # each stream uses PortStart + i - 1
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -25,6 +25,7 @@ Write-Host "Starting $Streams RTSP streams from $Input ..."
 $procs = @()
 for ($i = 1; $i -le $Streams; $i++) {
     $name = ("stream{0:D2}" -f $i)
+    $port = $PortStart + $i - 1
     $args = @(
         "-hide_banner", "-loglevel", "warning",
         "-re", "-stream_loop", "-1",
@@ -34,7 +35,7 @@ for ($i = 1; $i -le $Streams; $i++) {
         "-rtsp_transport", "tcp",
         "-muxdelay", "0.1",
         "-listen", "1",
-        "rtsp://$ListenHost`:$Port/$name"
+        "rtsp://$ListenHost`:$port/$name"
     )
     $proc = Start-Process -FilePath "ffmpeg" -ArgumentList $args -PassThru -WindowStyle Hidden
     $procs += $proc
@@ -43,7 +44,8 @@ for ($i = 1; $i -le $Streams; $i++) {
 Write-Host "RTSP endpoints:"
 for ($i = 1; $i -le $Streams; $i++) {
     $name = ("stream{0:D2}" -f $i)
-    Write-Host ("  rtsp://{0}:{1}/{2}" -f $ListenHost, $Port, $name)
+    $port = $PortStart + $i - 1
+    Write-Host ("  rtsp://{0}:{1}/{2}" -f $ListenHost, $port, $name)
 }
 
 Write-Host "Press Enter to stop all streams..."
