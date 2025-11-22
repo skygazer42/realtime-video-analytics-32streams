@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>实时视频分析仪表板 - 32路视频流</title>
+    <title>实时视频分析仪表�?- 32路视频流</title>
     <link rel="stylesheet" href="/static/styles.css" />
     <link rel="stylesheet" href="/static/enhancements.css" />
     <!-- Chart.js for data visualization -->
@@ -43,7 +43,7 @@
                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
               </svg>
             </button>
-            <button id="pause-toggle" class="icon-btn" title="暂停更新 (空格键)">
+            <button id="pause-toggle" class="icon-btn" title="暂停更新 (空格�?">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -56,7 +56,7 @@
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
             </button>
-            <button id="help-btn" class="icon-btn" title="键盘快捷键 (?)">
+            <button id="help-btn" class="icon-btn" title="键盘快捷�?(?)">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -72,26 +72,13 @@
       </div>
     </header>
 
-    <!-- Live status bar -->
-    <div class="live-bar">
-      <div class="live-pill status--disconnected" id="live-pill">
-        <span class="dot"></span>
-        <span id="live-label">Disconnected</span>
-      </div>
-      <div class="live-meta">
-        <span>Last update: <strong id="last-update">--</strong></span>
-        <span>Streams: <strong id="live-stream-count">0</strong></span>
-        <span>Tracks: <strong id="live-track-count">0</strong></span>
-      </div>
-    </div>
-
     <!-- Statistics Panel -->
     <div class="stats-panel">
       <div class="stat-card">
         <div class="stat-icon stat-icon--streams">📹</div>
         <div class="stat-content">
           <div class="stat-value" id="stat-total-streams">0</div>
-          <div class="stat-label">活跃流数量</div>
+          <div class="stat-label">活跃流数�?/div>
         </div>
       </div>
       <div class="stat-card">
@@ -117,13 +104,6 @@
       </div>
     </div>
 
-    <!-- Empty state -->
-    <div id="empty-state" class="empty-state" hidden>
-      <div class="empty-illustration">📹</div>
-      <h3>暂时没有实时数据</h3>
-      <p>请确认管道正在运行且已启用 Kafka，或稍候等待新的检测推送。</p>
-    </div>
-
     <!-- Analytics Charts Section -->
     <div class="charts-section">
       <div class="charts-header">
@@ -142,7 +122,7 @@
           </div>
         </div>
         <div class="chart-card">
-          <h3>视频流帧率</h3>
+          <h3>视频流帧�?/h3>
           <div class="chart-wrapper">
             <canvas id="fps-chart"></canvas>
           </div>
@@ -159,7 +139,7 @@
     <main>
       <section class="streams">
         <div class="section-header">
-          <h2>视频流列表</h2>
+          <h2>视频流列�?/h2>
           <div class="section-controls">
             <button id="view-toggle" class="icon-btn" title="切换视图 (V)">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -173,11 +153,11 @@
               type="text"
               id="stream-search"
               class="search-input"
-              placeholder="🔍 搜索视频流..."
+              placeholder="🔍 搜索视频�?.."
             />
             <select id="stream-filter" class="filter-select">
-              <option value="all">全部视频流</option>
-              <option value="active">仅活跃</option>
+              <option value="all">全部视频�?/option>
+              <option value="active">仅活�?/option>
               <option value="inactive">仅非活跃</option>
             </select>
           </div>
@@ -187,34 +167,34 @@
             <thead>
               <tr>
                 <th class="sortable" data-sort="stream">
-                  视频流
-                  <span class="sort-icon">⇅</span>
+                  视频�?
+                  <span class="sort-icon">�?/span>
                 </th>
                 <th class="sortable" data-sort="frame_id">
                   帧ID
-                  <span class="sort-icon">⇅</span>
+                  <span class="sort-icon">�?/span>
                 </th>
                 <th class="sortable" data-sort="tracks">
-                  跟踪数
-                  <span class="sort-icon">⇅</span>
+                  跟踪�?
+                  <span class="sort-icon">�?/span>
                 </th>
                 <th class="sortable" data-sort="fps">
                   帧率
-                  <span class="sort-icon">⇅</span>
+                  <span class="sort-icon">�?/span>
                 </th>
                 <th class="sortable" data-sort="status">
-                  状态
-                  <span class="sort-icon">⇅</span>
+                  状�?
+                  <span class="sort-icon">�?/span>
                 </th>
                 <th class="sortable" data-sort="updated">
-                  最后更新
-                  <span class="sort-icon">⇅</span>
+                  最后更�?
+                  <span class="sort-icon">�?/span>
                 </th>
               </tr>
             </thead>
             <tbody id="streams-body">
               <tr class="empty">
-                <td colspan="6">等待检测数据...</td>
+                <td colspan="6">等待检测数�?..</td>
               </tr>
             </tbody>
           </table>
@@ -226,18 +206,18 @@
 
       <section class="details">
         <div class="section-header">
-          <h2>检测详情</h2>
+          <h2>检测详�?/h2>
           <div class="selected-stream-info">
-            <span id="selected-stream-name">未选择视频流</span>
+            <span id="selected-stream-name">未选择视频�?/span>
           </div>
         </div>
 
         <!-- Frame Preview -->
         <div class="preview" id="preview-container">
           <div class="preview__placeholder" id="preview-placeholder">
-            请选择一个视频流来查看带边界框的最新标注帧。
+            请选择一个视频流来查看带边界框的最新标注帧�?
           </div>
-          <img id="stream-preview" alt="视频流预览" hidden />
+          <img id="stream-preview" alt="视频流预�? hidden />
           <button id="fullscreen-btn" class="fullscreen-btn" title="进入全屏 (F)" hidden>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -253,7 +233,7 @@
         <div class="tracks-container">
           <div class="tracks-header">
             <h3>活跃跟踪目标</h3>
-            <span class="track-count" id="track-count">0 个目标</span>
+            <span class="track-count" id="track-count">0 个目�?/span>
           </div>
           <div class="table-container">
             <table>
@@ -261,14 +241,14 @@
                 <tr>
                   <th>跟踪 ID</th>
                   <th>类别</th>
-                  <th>置信度</th>
-                  <th>边界框 (x1, y1, x2, y2)</th>
+                  <th>置信�?/th>
+                  <th>边界�?(x1, y1, x2, y2)</th>
                   <th>尺寸</th>
                 </tr>
               </thead>
               <tbody id="tracks-body">
                 <tr class="empty">
-                  <td colspan="5">选择一个视频流以查看跟踪详情</td>
+                  <td colspan="5">选择一个视频流以查看跟踪详�?/td>
                 </tr>
               </tbody>
             </table>
@@ -283,8 +263,8 @@
           <strong>实时视频分析系统</strong> - 多路视频流检测与跟踪管道
         </p>
         <p class="footer-info">
-          视频流通过 WebSocket 实时更新。
-          启用 Kafka 事件配置管道以查看检测结果。
+          视频流通过 WebSocket 实时更新�?
+          启用 Kafka 事件配置管道以查看检测结果�?
         </p>
       </div>
     </footer>
@@ -295,9 +275,9 @@
         <button id="close-fullscreen" class="close-btn">×</button>
         <img id="fullscreen-img" alt="全屏预览" />
         <div class="fullscreen-info">
-          <span id="fullscreen-stream">—</span>
-          <span id="fullscreen-resolution">—</span>
-          <span id="fullscreen-timestamp">—</span>
+          <span id="fullscreen-stream">�?/span>
+          <span id="fullscreen-resolution">�?/span>
+          <span id="fullscreen-timestamp">�?/span>
         </div>
       </div>
     </div>
@@ -306,19 +286,19 @@
     <div id="help-modal" class="modal" hidden>
       <div class="modal-content">
         <div class="modal-header">
-          <h3>键盘快捷键</h3>
+          <h3>键盘快捷�?/h3>
           <button id="close-help" class="close-btn">×</button>
         </div>
         <div class="modal-body">
           <div class="shortcut-group">
             <h4>导航</h4>
             <div class="shortcut">
-              <kbd>↑</kbd> <kbd>↓</kbd>
-              <span>导航视频流</span>
+              <kbd>�?/kbd> <kbd>�?/kbd>
+              <span>导航视频�?/span>
             </div>
             <div class="shortcut">
               <kbd>Enter</kbd>
-              <span>选择视频流</span>
+              <span>选择视频�?/span>
             </div>
           </div>
           <div class="shortcut-group">
@@ -371,7 +351,7 @@
           <button id="close-export" class="close-btn">×</button>
         </div>
         <div class="modal-body">
-          <p>选择导出格式：</p>
+          <p>选择导出格式�?/p>
           <div class="export-options">
             <button id="export-json" class="export-btn">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -380,7 +360,7 @@
                 <line x1="12" y1="18" x2="12" y2="12"></line>
                 <line x1="9" y1="15" x2="15" y2="15"></line>
               </svg>
-              导出为 JSON
+              导出�?JSON
             </button>
             <button id="export-csv" class="export-btn">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -390,16 +370,16 @@
                 <line x1="16" y1="17" x2="8" y2="17"></line>
                 <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              导出为 CSV
+              导出�?CSV
             </button>
           </div>
           <div class="export-info">
-            <p><strong>包含内容：</strong></p>
+            <p><strong>包含内容�?/strong></p>
             <ul>
-              <li>所有可见视频流（过滤后）</li>
-              <li>帧 ID 和时间戳</li>
+              <li>所有可见视频流（过滤后�?/li>
+              <li>�?ID 和时间戳</li>
               <li>跟踪详情和置信度分数</li>
-              <li>边界框坐标</li>
+              <li>边界框坐�?/li>
             </ul>
           </div>
         </div>
@@ -415,3 +395,4 @@
     <!-- <script src="/static/mock-data.js"></script> -->
   </body>
 </html>
+

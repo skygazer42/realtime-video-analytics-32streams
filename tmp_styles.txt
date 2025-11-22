@@ -104,79 +104,6 @@ h1 {
   background: #f87171;
 }
 
-/* Live bar */
-.live-bar {
-  margin: 12px 32px 0;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(34, 197, 94, 0.08));
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  max-width: 1920px;
-}
-
-.live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-weight: 600;
-  background: rgba(148, 163, 184, 0.15);
-  color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-}
-
-.live-pill .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
-}
-
-.live-pill.status--connected {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: #bbf7d0;
-}
-
-.live-pill.status--connected .dot {
-  background: #22c55e;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
-}
-
-.live-meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  color: #cbd5e1;
-  font-size: 0.95rem;
-}
-
-.live-meta strong {
-  color: #f8fafc;
-}
-
-/* Empty state */
-.empty-state {
-  margin: 12px 32px 8px;
-  padding: 26px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px dashed rgba(148, 163, 184, 0.35);
-  text-align: center;
-  color: #cbd5e1;
-  max-width: 1920px;
-}
-
-.empty-illustration {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -615,13 +542,13 @@ footer {
 }
 
 .sortable.sorted-asc .sort-icon::before {
-  content: 'â†‘';
+  content: 'â†?;
   opacity: 1;
   color: #3b82f6;
 }
 
 .sortable.sorted-desc .sort-icon::before {
-  content: 'â†“';
+  content: 'â†?;
   opacity: 1;
   color: #3b82f6;
 }
@@ -822,10 +749,6 @@ footer {
   margin: 0;
   font-size: 1.5rem;
   color: #fff;
-}
-
-.modal[hidden] {
-  display: none !important;
 }
 
 .close-btn {
@@ -1057,3 +980,4 @@ body.light-theme .footer-content p {
     font-size: 0.8rem;
   }
 }
+
