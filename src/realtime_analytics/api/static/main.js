@@ -675,17 +675,26 @@ const closeExport = document.getElementById('close-export');
 const exportJsonBtn = document.getElementById('export-json');
 const exportCsvBtn = document.getElementById('export-csv');
 
-exportBtn.addEventListener('click', () => {
+function showExportModal() {
   exportModal.hidden = false;
-});
+}
 
-closeExport.addEventListener('click', () => {
+function hideExportModal() {
   exportModal.hidden = true;
-});
+}
+
+exportBtn.addEventListener('click', showExportModal);
+closeExport.addEventListener('click', hideExportModal);
 
 exportModal.addEventListener('click', (e) => {
   if (e.target === exportModal) {
-    exportModal.hidden = true;
+    hideExportModal();
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (!exportModal.hidden && e.key === 'Escape') {
+    hideExportModal();
   }
 });
 

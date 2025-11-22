@@ -40,6 +40,7 @@ services:
     volumes:
       - ./config:/data/config
       - ./models:/app/models:ro
+      - ./data:/app/data:ro
     depends_on:
       kafka:
         condition: service_healthy

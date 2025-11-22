@@ -129,7 +129,7 @@ class UltralyticsDetector(BaseDetector):
         self._model = YOLO(self.config.model_path)
         if self.config.warmup:
             LOGGER.debug("Running detector warmup on dummy tensor")
-            dummy = np.zeros((1, 3, 640, 640), dtype=np.float32)
+            dummy = np.zeros((640, 640, 3), dtype=np.uint8)
             self._model.predict(
                 source=dummy,
                 device=self.config.device,

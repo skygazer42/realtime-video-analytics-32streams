@@ -94,6 +94,9 @@ docker compose up pipeline
 docker compose up dashboard
 ```
 
+#### Quick 4-stream local demo
+See `docs/local_rtsp_demo.md` for a step-by-step guide (PowerShell and bash) that spins up 4 RTSP streams from the bundled sample video and runs the pipeline in Docker using `host.docker.internal`.
+
 Mounted volumes:
 
 - `./config` ➜ `/data/config` – place your pipeline YAML here (e.g. `config/pipeline.yaml`).
