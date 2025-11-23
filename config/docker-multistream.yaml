@@ -1,0 +1,79 @@
+---
+# Docker 容器内访问主机 RTSP 流的配置
+# 配合 scripts/rtsp-multistream.ps1 使用
+
+max_concurrent_streams: 32
+stats_interval_seconds: 10
+
+streams:
+  - name: camera-01
+    url: rtsp://host.docker.internal:8554/stream01
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+
+  - name: camera-02
+    url: rtsp://host.docker.internal:8554/stream02
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+
+  - name: camera-03
+    url: rtsp://host.docker.internal:8554/stream03
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+
+  - name: camera-04
+    url: rtsp://host.docker.internal:8554/stream04
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+
+# 默认检测器配置
+detector:
+  model_path: models/yolo/yolov8n.pt
+  device: auto                      # auto / cpu / cuda:0
+  backend: ultralytics              # ultralytics / onnx / tensorrt
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  classes: null                     # null = 检测所有类别
+  half: false
+  warmup: true
+
+# 轻量级 IOU 跟踪器
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+# Kafka 事件输出（用于仪表板）
+kafka:
+  enabled: true
+  bootstrap_servers: host.docker.internal:9092  # 如果 Kafka 在主机运行
+  topic: analytics.events
+  linger_ms: 10
+  max_batch_size: 16384
+  include_frames: true              # 仪表板需要帧图像
+  frame_quality: 75                 # JPEG 质量
+  max_frame_rate_per_stream: 2      # 限制帧率避免 Kafka 过载
+
+# Prometheus 指标
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5

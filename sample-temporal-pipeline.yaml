@@ -1,0 +1,132 @@
+# Example configuration for temporal video analysis models
+# Supports CNN-LSTM, 3D CNN, ConvGRU, and SlowFast networks
+
+# Stream configuration
+streams:
+  # Example stream with temporal action recognition
+  - name: "action_recognition_stream"
+    url: "rtsp://localhost:8554/stream1"
+    enabled: true
+    target_fps: 15  # Lower FPS for temporal models (reduce computational load)
+    batch_size: 1
+    detector_id: "temporal_cnn_lstm"
+
+  # Example stream with 3D CNN
+  - name: "video_analysis_stream"
+    url: "rtsp://localhost:8554/stream2"
+    enabled: true
+    target_fps: 10
+    detector_id: "temporal_3d_cnn"
+
+# Detector configurations
+detectors:
+  # CNN-LSTM detector for action recognition
+  temporal_cnn_lstm:
+    model_type: "cnn_lstm"
+    backend: "onnxruntime"
+    model_path: "/models/cnn_lstm_kinetics400.onnx"
+    device: "cuda"  # or "cpu"
+    confidence_threshold: 0.3
+    half: false
+    warmup: true
+
+    # Temporal model parameters
+    sequence_length: 16  # Number of frames in sequence
+    sequence_stride: 2   # Sample every 2nd frame (reduces computation)
+    temporal_overlap: 0.5  # 50% overlap between consecutive sequences
+    temporal_pooling: "avg"  # Pooling method: avg | max | last
+    num_action_classes: 400  # Kinetics-400 dataset classes
+
+    # Optional: Action class names (for better logging)
+    # action_classes:
+    #   - "walking"
+    #   - "running"
+    #   - "jumping"
+    #   # ... (400 classes total for Kinetics-400)
+
+    # Input size (H, W)
+    input_size: [224, 224]
+
+  # 3D CNN detector for spatiotemporal analysis
+  temporal_3d_cnn:
+    model_type: "3d_cnn"
+    backend: "onnxruntime"
+    model_path: "/models/resnet3d_kinetics.onnx"
+    device: "cuda"
+    confidence_threshold: 0.35
+    half: false
+    warmup: true
+
+    # Temporal parameters
+    sequence_length: 16
+    sequence_stride: 1
+    temporal_overlap: 0.25
+    temporal_pooling: "max"
+    num_action_classes: 400
+    input_size: [112, 112]  # 3D CNNs often use smaller spatial resolution
+
+  # ConvGRU detector (efficient alternative to LSTM)
+  temporal_conv_gru:
+    model_type: "conv_gru"
+    backend: "openvino"  # OpenVINO for Intel hardware
+    model_path: "/models/convgru_ucf101.xml"
+    device: "cpu"
+    confidence_threshold: 0.4
+    warmup: true
+
+    sequence_length: 10  # Shorter sequence for GRU
+    sequence_stride: 1
+    temporal_overlap: 0.5
+    num_action_classes: 101  # UCF-101 dataset
+    input_size: [224, 224]
+
+  # SlowFast network for action recognition
+  temporal_slowfast:
+    model_type: "slow_fast"
+    backend: "onnxruntime"
+    model_path: "/models/slowfast_kinetics.onnx"
+    device: "cuda"
+    confidence_threshold: 0.3
+    half: true  # Use FP16 for faster inference
+
+    sequence_length: 32  # SlowFast uses longer sequences
+    sequence_stride: 2
+    temporal_overlap: 0.5
+    num_action_classes: 400
+    input_size: [256, 256]
+
+# Default detector (YOLO for standard object detection)
+detector:
+  model_type: "yolov8"
+  backend: "onnxruntime"
+  model_path: "yolov8n.onnx"
+  device: "cuda"
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+
+# Tracker configuration
+tracker:
+  type: "byte_track"
+  max_age: 30
+  max_iou_distance: 0.7
+  min_hits: 3
+
+# Kafka sink (optional)
+kafka:
+  enabled: false
+  bootstrap_servers: "localhost:9092"
+  topic: "temporal_analytics"
+  linger_ms: 10
+  max_batch_size: 16384
+  include_frames: false
+
+# Prometheus metrics
+prometheus:
+  enabled: true
+  host: "0.0.0.0"
+  port: 9000
+  interval_seconds: 5.0
+
+# Pipeline configuration
+max_concurrent_streams: 32
+stats_interval_seconds: 15.0

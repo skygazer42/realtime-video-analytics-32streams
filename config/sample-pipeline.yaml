@@ -1,0 +1,99 @@
+---
+# Example pipeline configuration for realtime-video-analytics-32streams
+
+max_concurrent_streams: 32   # 最大并行摄像头数量：硬防止配置超过实际算力
+stats_interval_seconds: 15   # 控制台统计打印间隔（秒）
+
+streams:
+  # 每个流一条配置，可通过 detector_id 指向不同检测模型
+  - name: camera-1
+    url: rtsp://example.com/stream1
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+    detector_id: entrance
+    # ffmpeg_simulator 可用于在本地通过 ffmpeg 推流模拟摄像头
+    # ffmpeg_simulator:
+    #   enabled: true
+    #   input: data/samples/traffic.mp4
+    #   listen_host: 0.0.0.0
+    #   loop: true
+    #   extra_args:
+    #     - "-vf"
+    #     - "scale=1280:720"
+  - name: camera-2
+    url: rtsp://example.com/stream2
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 1.0
+    reconnect_backoff: 5.0
+    max_retries: null
+    detector_id: parking
+  - name: camera-simulated
+    url: rtsp://127.0.0.1:8554/camera-sim
+    enabled: false
+    target_fps: 15
+    warmup_seconds: 1.0
+    reconnect_backoff: 3.0
+    max_retries: null
+    ffmpeg_simulator:
+      enabled: true
+      input: data/samples/demo.mp4
+      listen_host: 0.0.0.0
+      loop: true
+      extra_args:
+        - "-vf"
+        - "scale=1280:720"
+
+# 默认检测器（streams 未设置 detector_id 时使用）
+detector:
+  model_path: models/yolo/yolov8n.pt  # 使用本地轻量模型
+  device: auto                 # auto / cpu / cuda:0 ...
+  backend: ultralytics         # ultralytics / tensorrt
+  confidence_threshold: 0.5          # 置信度阈值
+  iou_threshold: 0.45          # NMS IoU 阈值
+  classes: null                # 过滤类别（null 表示全部）
+  half: false                  # 是否使用半精度
+  warmup: true                 # 启动时跑一次暖机
+
+# 自定义检测器映射：id -> DetectorConfig
+detectors:
+  entrance:
+    backend: ultralytics
+    model_path: models/yolo/entrance.pt
+    device: cuda:0
+    confidence_threshold: 0.45
+  parking:
+    backend: ultralytics
+    model_path: models/yolo/yolov8n.pt
+    device: cuda:0
+    confidence_threshold: 0.5
+    iou_threshold: 0.5
+
+# 轻量级 IOU 跟踪器参数
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+# Kafka 事件输出，可被仪表盘/其它服务消费
+kafka:
+  enabled: false
+  bootstrap_servers: localhost:9092
+  topic: analytics.events
+  linger_ms: 10
+  max_batch_size: 16384
+  include_frames: false
+  frame_quality: 75
+
+# Prometheus 指标配置
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5

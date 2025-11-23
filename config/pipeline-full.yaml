@@ -1,0 +1,55 @@
+﻿---
+# Local file-based simulation + Kafka + Dashboard
+max_concurrent_streams: 32
+stats_interval_seconds: 10
+streams:
+  - name: demo-stream-01
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 1.5
+    ffmpeg_simulator:
+      enabled: false
+  - name: demo-stream-02
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 15
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 1.5
+    ffmpeg_simulator:
+      enabled: false
+
+# Default detector configuration
+detector:
+  model_path: /app/models/yolo/yolov8n.pt
+  device: cpu
+  backend: ultralytics
+  confidence_threshold: 0.3
+  iou_threshold: 0.5
+  half: false
+  warmup: true
+
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+kafka:
+  enabled: true
+  bootstrap_servers: kafka:9092
+  topic: analytics.events
+  linger_ms: 10
+  max_batch_size: 16384
+  include_frames: true
+  frame_quality: 80
+  max_frame_rate_per_stream: 5
+
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5

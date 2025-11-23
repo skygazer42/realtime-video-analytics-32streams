@@ -1,0 +1,68 @@
+[project]
+name = "realtime-video-analytics-32streams"
+version = "0.1.0"
+description = "Multi-stream realtime detection and tracking pipeline (YOLOv8 baseline, Kafka, Prometheus)."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Realtime Analytics" }
+]
+dependencies = [
+  "opencv-python>=4.8.0",
+  "numpy>=1.24.0",
+  "pyyaml>=6.0",
+  "prometheus-client>=0.16.0",
+]
+
+[project.optional-dependencies]
+detector = ["ultralytics>=8.0.0"]
+tensorrt = []
+onnx = ["onnxruntime>=1.23.0"]
+onnx-gpu = ["onnxruntime-gpu>=1.23.0"]
+openvino = ["openvino>=2023.0.0"]
+rknn = ["rknn-toolkit2>=2.0.0"]
+kafka = ["aiokafka>=0.10.0"]
+dashboard = [
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.28.0",
+  "aiokafka>=0.10.0",
+  "aiofiles>=23.2.0",
+]
+full = [
+  "ultralytics>=8.0.0",
+  "aiokafka>=0.10.0",
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.28.0",
+  "aiofiles>=23.2.0",
+]
+full-onnx = [
+  "ultralytics>=8.0.0",
+  "onnxruntime>=1.23.0",
+  "aiokafka>=0.10.0",
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.28.0",
+  "aiofiles>=23.2.0",
+]
+full-openvino = [
+  "ultralytics>=8.0.0",
+  "openvino>=2023.0.0",
+  "aiokafka>=0.10.0",
+  "fastapi>=0.110.0",
+  "uvicorn[standard]>=0.28.0",
+  "aiofiles>=23.2.0",
+]
+
+[project.scripts]
+realtime-analytics = "scripts.run_pipeline:main"
+realtime-analytics-dashboard = "scripts.run_dashboard:main"
+
+[tool.uv]
+package = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools>=67.0"]
+build-backend = "setuptools.build_meta"

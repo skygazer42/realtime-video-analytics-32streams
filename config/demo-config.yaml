@@ -1,0 +1,85 @@
+---
+# 演示配置：模拟流 + 检测 + 前端可视化
+# 使用本地视频文件通过FFmpeg模拟RTSP流，进行实时检测并在Web界面展示
+
+max_concurrent_streams: 2
+stats_interval_seconds: 10
+
+streams:
+  # 模拟摄像头1 - 使用FFmpeg推流
+  - name: demo-camera-1
+    url: rtsp://127.0.0.1:8554/demo-stream-1
+    enabled: true
+    target_fps: 15              # 目标处理帧率
+    batch_size: 1
+    warmup_seconds: 2.0         # 等待FFmpeg启动
+    reconnect_backoff: 3.0
+    max_retries: null           # 无限重试
+
+    # 启用FFmpeg模拟器 - 从本地视频生成RTSP流
+    ffmpeg_simulator:
+      enabled: true
+      input: data/samples/demo.mp4
+      listen_host: 0.0.0.0
+      listen_port: 8554
+      stream_path: /demo-stream-1
+      loop: true                # 循环播放
+      video_codec: libx264      # H.264编码
+      extra_args:
+        - "-vf"
+        - "scale=1280:720"      # 缩放到720p
+        - "-r"
+        - "15"                  # 输出帧率
+
+  # 可选：第二路模拟流（如需测试多路并发可启用）
+  - name: demo-camera-2
+    url: rtsp://127.0.0.1:8555/demo-stream-2
+    enabled: false              # 默认关闭，需要时启用
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 2.0
+    reconnect_backoff: 3.0
+
+    ffmpeg_simulator:
+      enabled: false
+      input: data/samples/demo.mp4
+      listen_host: 0.0.0.0
+      listen_port: 8555
+      stream_path: /demo-stream-2
+      loop: true
+      video_codec: libx264
+
+# 默认检测器配置
+detector:
+  backend: ultralytics           # 使用Ultralytics YOLOv8
+  model_path: models/yolo/yolov8n.pt
+  device: auto                   # 自动选择设备（GPU优先）
+  confidence_threshold: 0.4      # 降低阈值以显示更多检测
+  iou_threshold: 0.45
+  classes: null                  # 检测所有类别
+  half: false                    # 混合精度（GPU上可启用）
+  warmup: true
+
+# 目标跟踪器
+tracker:
+  type: byte_track
+  max_age: 30                    # 最多保留30帧
+  max_iou_distance: 0.5
+  min_hits: 1                    # 首次检测即分配ID
+
+# Kafka配置 - 仪表板通过Kafka接收检测事件和帧图像
+kafka:
+  enabled: true                  # ⚠️ 必须启用才能在前端看到检测结果
+  bootstrap_servers: localhost:9092
+  topic: analytics.events
+  linger_ms: 10                  # 批处理延迟
+  max_batch_size: 16384
+  include_frames: true           # ⚠️ 包含检测帧的JPEG图像（前端必需）
+  frame_quality: 75              # JPEG质量 (0-100)
+
+# Prometheus监控（可选）
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5

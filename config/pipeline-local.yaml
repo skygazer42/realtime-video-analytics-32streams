@@ -1,0 +1,63 @@
+---
+# Config using built-in ffmpeg simulator - no external RTSP server needed!
+
+max_concurrent_streams: 4
+stats_interval_seconds: 10
+
+streams:
+  - name: cam01
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+  - name: cam02
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+  - name: cam03
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+  - name: cam04
+    url: /app/data/samples/demo.mp4
+    enabled: true
+    target_fps: 12
+    batch_size: 1
+    warmup_seconds: 0.5
+    reconnect_backoff: 2.0
+
+# Default detector shared by streams
+detector:
+  model_path: /app/models/yolo/yolov8n.pt
+  device: cpu            # cpu or cuda:0
+  backend: ultralytics
+  confidence_threshold: 0.35
+  iou_threshold: 0.5
+  half: false
+  warmup: true
+
+tracker:
+  type: byte_track
+  max_age: 30
+  max_iou_distance: 0.5
+  min_hits: 1
+
+kafka:
+  enabled: false
+
+prometheus:
+  enabled: true
+  host: 0.0.0.0
+  port: 9000
+  interval_seconds: 5

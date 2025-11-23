@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能视频监控中心 - AI实时分析系统</title>
+
+    <!-- 引入现代字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- 引入图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="/static/modern-ui.css">
+
+    <style>
+        /* 内联关键样式 */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0e27;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载画面 -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-logo">
+            <svg viewBox="0 0 100 100" fill="none" stroke="#00d4ff" stroke-width="2">
+                <circle cx="50" cy="50" r="45" stroke-dasharray="283" stroke-dashoffset="75"
+                        style="animation: rotate 2s linear infinite;">
+                </circle>
+                <path d="M30 50 L45 65 L70 35" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h2 style="color: #00d4ff; margin-bottom: 1rem;">智能监控系统启动中</h2>
+        <div class="loader"></div>
+    </div>
+
+    <!-- 专业头部 -->
+    <header class="pro-header">
+        <div class="header-grid">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <i class="fas fa-video" style="color: white; font-size: 24px;"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>智能视频监控中心</h1>
+                    <span>AI驱动 · 实时分析 · 32路并行处理</span>
+                </div>
+            </div>
+
+            <div class="status-indicators">
+                <div class="indicator">
+                    <div class="indicator-dot"></div>
+                    <span class="indicator-text">系统状态: <span class="indicator-value">在线</span></span>
+                </div>
+                <div class="indicator">
+                    <i class="fas fa-server" style="color: #00d4ff;"></i>
+                    <span class="indicator-text">GPU: <span class="indicator-value">85%</span></span>
+                </div>
+                <div class="indicator">
+                    <i class="fas fa-network-wired" style="color: #00d4ff;"></i>
+                    <span class="indicator-text">延迟: <span class="indicator-value">12ms</span></span>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <button class="control-btn" title="全屏模式">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button class="control-btn" title="设置">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="control-btn" title="通知" style="position: relative;">
+                    <i class="fas fa-bell"></i>
+                    <span style="position: absolute; top: 5px; right: 5px; width: 8px; height: 8px;
+                                 background: #ff4444; border-radius: 50%;"></span>
+                </button>
+                <button class="control-btn" title="用户">
+                    <i class="fas fa-user"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 高级统计面板 -->
+    <section class="stats-grid">
+        <div class="stat-card-pro animate-in">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper streams">
+                    <i class="fas fa-video"></i>
+                </div>
+                <div class="stat-trend up">
+                    <i class="fas fa-arrow-up"></i> 12%
+                </div>
+            </div>
+            <div class="stat-value-large" id="stat-streams">32</div>
+            <div class="stat-label">活跃视频流</div>
+            <div class="stat-chart-mini">
+                <canvas id="mini-chart-streams"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card-pro animate-in" style="animation-delay: 0.1s;">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper detections">
+                    <i class="fas fa-crosshairs"></i>
+                </div>
+                <div class="stat-trend up">
+                    <i class="fas fa-arrow-up"></i> 28%
+                </div>
+            </div>
+            <div class="stat-value-large" id="stat-detections">1,284</div>
+            <div class="stat-label">今日检测总数</div>
+            <div class="stat-chart-mini">
+                <canvas id="mini-chart-detections"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card-pro animate-in" style="animation-delay: 0.2s;">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper performance">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div class="stat-trend up">
+                    <i class="fas fa-arrow-up"></i> 5%
+                </div>
+            </div>
+            <div class="stat-value-large" id="stat-fps">28.5</div>
+            <div class="stat-label">平均帧率 (FPS)</div>
+            <div class="stat-chart-mini">
+                <canvas id="mini-chart-fps"></canvas>
+            </div>
+        </div>
+
+        <div class="stat-card-pro animate-in" style="animation-delay: 0.3s;">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper alerts">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-trend down">
+                    <i class="fas fa-arrow-down"></i> 15%
+                </div>
+            </div>
+            <div class="stat-value-large" id="stat-alerts">7</div>
+            <div class="stat-label">活跃告警</div>
+            <div class="stat-chart-mini">
+                <canvas id="mini-chart-alerts"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- 主要内容区域 -->
+    <main style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem; padding: 0 2rem;">
+        <!-- 左侧：视频监控网格 -->
+        <section>
+            <!-- 控制栏 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="color: #00d4ff; font-size: 1.5rem;">
+                    <i class="fas fa-th"></i> 实时监控画面
+                </h2>
+                <div style="display: flex; gap: 1rem;">
+                    <select class="chart-btn" style="padding: 0.5rem 1rem;">
+                        <option>全部摄像头</option>
+                        <option>室内摄像头</option>
+                        <option>室外摄像头</option>
+                        <option>高危区域</option>
+                    </select>
+                    <button class="chart-btn active">
+                        <i class="fas fa-th"></i> 网格
+                    </button>
+                    <button class="chart-btn">
+                        <i class="fas fa-list"></i> 列表
+                    </button>
+                    <button class="chart-btn">
+                        <i class="fas fa-expand"></i> 放大
+                    </button>
+                </div>
+            </div>
+
+            <!-- 监控画面网格 -->
+            <div class="monitor-grid" id="monitor-grid">
+                <!-- 动态生成监控卡片 -->
+            </div>
+        </section>
+
+        <!-- 右侧：实时信息面板 -->
+        <aside>
+            <!-- 实时告警 -->
+            <div class="alert-panel">
+                <div class="alert-header">
+                    <div class="alert-title">
+                        <i class="fas fa-bell"></i>
+                        实时告警
+                    </div>
+                    <span style="background: #ff4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">7</span>
+                </div>
+                <div class="alert-list" id="alert-list">
+                    <div class="alert-item">
+                        <div class="alert-time">2分钟前</div>
+                        <div class="alert-message">
+                            <i class="fas fa-exclamation-circle" style="color: #ffaa00;"></i>
+                            摄像头_15 检测到异常聚集
+                        </div>
+                    </div>
+                    <div class="alert-item">
+                        <div class="alert-time">5分钟前</div>
+                        <div class="alert-message">
+                            <i class="fas fa-exclamation-circle" style="color: #ff4444;"></i>
+                            摄像头_08 检测到可疑行为
+                        </div>
+                    </div>
+                    <div class="alert-item">
+                        <div class="alert-time">12分钟前</div>
+                        <div class="alert-message">
+                            <i class="fas fa-info-circle" style="color: #00d4ff;"></i>
+                            系统完成自动校准
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统性能 -->
+            <div class="chart-container-pro" style="margin-top: 1rem;">
+                <div class="chart-header">
+                    <div class="chart-title">系统性能</div>
+                </div>
+                <canvas id="performance-chart" height="150"></canvas>
+            </div>
+
+            <!-- 检测分类 -->
+            <div class="chart-container-pro" style="margin-top: 1rem;">
+                <div class="chart-header">
+                    <div class="chart-title">检测分类统计</div>
+                </div>
+                <canvas id="classification-chart" height="150"></canvas>
+            </div>
+        </aside>
+    </main>
+
+    <!-- 高级分析区域 -->
+    <section class="analytics-section">
+        <h2 style="color: #00d4ff; margin-bottom: 2rem;">
+            <i class="fas fa-chart-line"></i> 智能分析
+        </h2>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <!-- 热力图 -->
+            <div class="chart-container-pro">
+                <div class="chart-header">
+                    <div class="chart-title">活动热力图</div>
+                    <div class="chart-controls">
+                        <button class="chart-btn active">今日</button>
+                        <button class="chart-btn">本周</button>
+                        <button class="chart-btn">本月</button>
+                    </div>
+                </div>
+                <div class="heatmap-container" id="heatmap">
+                    <!-- 动态生成热力图单元格 -->
+                </div>
+            </div>
+
+            <!-- 时间线图表 -->
+            <div class="chart-container-pro">
+                <div class="chart-header">
+                    <div class="chart-title">24小时趋势</div>
+                </div>
+                <canvas id="timeline-chart" height="200"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- 浮动操作按钮 -->
+    <div class="fab-container">
+        <button class="fab" id="fab-main">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 移除加载画面
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+        }, 1500);
+
+        // 生成监控画面卡片
+        function generateMonitorCards() {
+            const grid = document.getElementById('monitor-grid');
+            const statuses = ['active', 'idle', 'active', 'active', 'idle'];
+            const detectionCounts = [5, 0, 3, 8, 0, 2, 4, 1, 0, 6];
+
+            for (let i = 1; i <= 32; i++) {
+                const isActive = Math.random() > 0.3;
+                const detections = isActive ? Math.floor(Math.random() * 10) : 0;
+
+                const card = document.createElement('div');
+                card.className = `monitor-card ${isActive ? 'active' : ''}`;
+                card.innerHTML = `
+                    <div class="monitor-header">
+                        <span class="monitor-id">
+                            <i class="fas fa-camera"></i> 摄像头_${String(i).padStart(2, '0')}
+                        </span>
+                        <div class="monitor-status">
+                            <span class="status-badge ${isActive ? 'active' : 'idle'}">
+                                ${isActive ? '活跃' : '空闲'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="monitor-preview">
+                        <div class="preview-placeholder">
+                            <i class="fas fa-video" style="font-size: 2rem; color: #233554;"></i>
+                            <p style="margin-top: 1rem;">实时画面</p>
+                        </div>
+                        <div class="preview-overlay"></div>
+                        <div class="monitor-info">
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">检测</div>
+                                    <div class="info-value">${detections}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">FPS</div>
+                                    <div class="info-value">${20 + Math.floor(Math.random() * 10)}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">质量</div>
+                                    <div class="info-value">${85 + Math.floor(Math.random() * 15)}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        // 生成热力图
+        function generateHeatmap() {
+            const heatmap = document.getElementById('heatmap');
+            for (let i = 0; i < 64; i++) {
+                const cell = document.createElement('div');
+                const level = Math.floor(Math.random() * 5);
+                cell.className = `heatmap-cell level-${level}`;
+                heatmap.appendChild(cell);
+            }
+        }
+
+        // 初始化迷你图表
+        function initMiniCharts() {
+            // 配置选项
+            const miniChartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                elements: {
+                    point: { radius: 0 },
+                    line: { borderWidth: 2 }
+                }
+            };
+
+            // 生成随机数据
+            const generateData = () => Array.from({length: 10}, () => Math.random() * 100);
+
+            // 流量图
+            new Chart(document.getElementById('mini-chart-streams'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: generateData(),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: miniChartOptions
+            });
+
+            // 检测图
+            new Chart(document.getElementById('mini-chart-detections'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: generateData(),
+                        borderColor: '#f093fb',
+                        backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: miniChartOptions
+            });
+
+            // FPS图
+            new Chart(document.getElementById('mini-chart-fps'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: generateData(),
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: miniChartOptions
+            });
+
+            // 告警图
+            new Chart(document.getElementById('mini-chart-alerts'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: generateData(),
+                        borderColor: '#ffaa00',
+                        backgroundColor: 'rgba(255, 170, 0, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: miniChartOptions
+            });
+        }
+
+        // 初始化性能图表
+        function initPerformanceChart() {
+            new Chart(document.getElementById('performance-chart'), {
+                type: 'line',
+                data: {
+                    labels: ['CPU', 'GPU', '内存', '网络', '存储'],
+                    datasets: [{
+                        label: '使用率',
+                        data: [65, 85, 45, 30, 55],
+                        borderColor: '#00d4ff',
+                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: '#8892b0' },
+                            grid: { color: 'rgba(136, 146, 176, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#8892b0' },
+                            grid: { color: 'rgba(136, 146, 176, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 初始化分类图表
+        function initClassificationChart() {
+            new Chart(document.getElementById('classification-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['人员', '车辆', '动物', '物体', '其他'],
+                    datasets: [{
+                        data: [45, 30, 10, 10, 5],
+                        backgroundColor: [
+                            '#667eea',
+                            '#00d4ff',
+                            '#f093fb',
+                            '#ffaa00',
+                            '#00ff88'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#8892b0', padding: 10 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 初始化时间线图表
+        function initTimelineChart() {
+            const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+            new Chart(document.getElementById('timeline-chart'), {
+                type: 'bar',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: '检测数量',
+                        data: hours.map(() => Math.floor(Math.random() * 100)),
+                        backgroundColor: 'rgba(0, 212, 255, 0.5)',
+                        borderColor: '#00d4ff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#8892b0' },
+                            grid: { color: 'rgba(136, 146, 176, 0.1)' }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#8892b0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 实时更新数据
+        function updateRealTimeData() {
+            // 更新统计数字
+            document.getElementById('stat-detections').textContent =
+                (parseInt(document.getElementById('stat-detections').textContent) + Math.floor(Math.random() * 5)).toLocaleString();
+
+            // 更新告警
+            if (Math.random() > 0.8) {
+                const alertList = document.getElementById('alert-list');
+                const newAlert = document.createElement('div');
+                newAlert.className = 'alert-item animate-in';
+                newAlert.innerHTML = `
+                    <div class="alert-time">刚刚</div>
+                    <div class="alert-message">
+                        <i class="fas fa-info-circle" style="color: #00d4ff;"></i>
+                        摄像头_${String(Math.floor(Math.random() * 32) + 1).padStart(2, '0')} 检测到新目标
+                    </div>
+                `;
+                alertList.insertBefore(newAlert, alertList.firstChild);
+                if (alertList.children.length > 5) {
+                    alertList.removeChild(alertList.lastChild);
+                }
+            }
+
+            // 更新监控卡片状态
+            const cards = document.querySelectorAll('.monitor-card');
+            const randomCard = cards[Math.floor(Math.random() * cards.length)];
+            randomCard.classList.toggle('active');
+        }
+
+        // 初始化所有组件
+        window.addEventListener('DOMContentLoaded', () => {
+            generateMonitorCards();
+            generateHeatmap();
+            initMiniCharts();
+            initPerformanceChart();
+            initClassificationChart();
+            initTimelineChart();
+
+            // 启动实时更新
+            setInterval(updateRealTimeData, 2000);
+        });
+
+        // FAB按钮功能
+        document.getElementById('fab-main').addEventListener('click', function() {
+            this.style.transform = 'scale(1.1) rotate(45deg)';
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 300);
+        });
+    </script>
+</body>
+</html>

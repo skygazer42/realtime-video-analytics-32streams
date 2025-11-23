@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: realtime-analytics:latest
+    container_name: realtime-analytics-pipeline
+    command: ["/app/docker/run_pipeline.sh"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      PIPELINE_CONFIG: /data/config/pipeline.yaml
+    volumes:
+      - ./config:/data/config:ro
+      - ./models:/app/models:ro
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: realtime-analytics:latest
+    container_name: realtime-analytics-dashboard
+    command: ["/app/docker/run_dashboard.sh"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DASHBOARD_CONFIG: /data/config/pipeline.yaml
+      DASHBOARD_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/data/config:ro
+    depends_on:
+      - pipeline
+    restart: unless-stopped
